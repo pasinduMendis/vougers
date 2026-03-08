@@ -98,8 +98,8 @@ export function ProviderSelector({
           <p className="text-sm text-gray-600 py-2">No providers available</p>
         ) : (
           <div className="space-y-2 max-h-60 overflow-y-auto !mb-[8px]">
-            {providers.map((provider) => (
-              <div className="!mb-[8px]">
+            {providers.map((provider,id) => (
+              <div className="!mb-[8px]" key={provider+"-key-"+id}>
               <Checkbox
                 key={provider._id}
                 checked={selectedIds.includes(provider._id)}
