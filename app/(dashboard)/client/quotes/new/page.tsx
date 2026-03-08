@@ -7,7 +7,7 @@ export default function NewQuoteRequestPage() {
   return (
     <div className="max-w-3xl mx-auto py-4 sm:py-6 px-4 sm:px-0">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm mb-6">
+      <nav className="flex items-center gap-2 text-sm !mb-[16px]">
         <Link
           href="/client/quotes"
           className="text-slate-600 hover:text-indigo-600 transition-colors flex items-center gap-1"
@@ -24,8 +24,8 @@ export default function NewQuoteRequestPage() {
       </nav>
 
       {/* Page Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
+      <div className="!mb-[16px]">
+        <div className="flex items-center gap-3 !mb-[16px]">
           <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-md shadow-indigo-200">
             <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

@@ -18,7 +18,7 @@ export function Header({ user, onLogout, onMenuClick, className }: HeaderProps) 
   return (
     <header
       className={cn(
-        'sticky top-0 z-30 flex items-center justify-between h-16 px-4 md:px-6 bg-white border-b border-slate-200 shadow-sm',
+        'sticky top-0 z-30 flex items-center justify-between h-16 px-4 md:px-6 bg-white border-b border-slate-200 shadow-sm !px-[8px]',
         className
       )}
     >

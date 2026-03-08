@@ -364,7 +364,7 @@ export function QuoteRequestForm({ onSuccess }: QuoteRequestFormProps) {
                     d="M12 4v16m8-8H4"
                   />
                 </svg>
-                Add Field
+                Add&nbsp;<span className="hidden md:block">Field</span>
               </Button>
             </div>
 
@@ -377,22 +377,17 @@ export function QuoteRequestForm({ onSuccess }: QuoteRequestFormProps) {
                   >
                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">
-                          Field Name
-                        </label>
-                        <input
+                        <Input
+                          label="Field Name"
+                          name="fieldName"
                           type="text"
+                          size="md"
                           placeholder="e.g., Weight"
                           value={field.key}
                           onChange={(e) =>
                             updateDynamicField(field.id, "key", e.target.value)
                           }
                           disabled={isLoading}
-                          className={`block w-full h-11 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 rounded-xl border-2 shadow-sm transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-offset-0 ${
-                            errors[`dynamicKey_${field.id}`]
-                              ? "border-red-300 focus:border-red-500 focus:ring-red-100 bg-red-50/50"
-                              : "border-slate-200 focus:border-indigo-500 focus:ring-indigo-100 hover:border-slate-300 bg-white"
-                          } ${isLoading ? "bg-slate-100 cursor-not-allowed opacity-60" : ""}`}
                         />
                         {errors[`dynamicKey_${field.id}`] && (
                           <p className="!mt-[8px] text-sm text-red-600 flex items-center gap-1.5">
@@ -412,11 +407,11 @@ export function QuoteRequestForm({ onSuccess }: QuoteRequestFormProps) {
                         )}
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">
-                          Field Value
-                        </label>
-                        <input
+                        <Input
                           type="text"
+                          name="fieldValue"
+                          label="Field Value"
+                          size="md"
                           placeholder="e.g., 500 kg"
                           value={field.value}
                           onChange={(e) =>
@@ -427,11 +422,7 @@ export function QuoteRequestForm({ onSuccess }: QuoteRequestFormProps) {
                             )
                           }
                           disabled={isLoading}
-                          className={`block w-full h-11 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 rounded-xl border-2 shadow-sm transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-offset-0 ${
-                            errors[`dynamicValue_${field.id}`]
-                              ? "border-red-300 focus:border-red-500 focus:ring-red-100 bg-red-50/50"
-                              : "border-slate-200 focus:border-indigo-500 focus:ring-indigo-100 hover:border-slate-300 bg-white"
-                          } ${isLoading ? "bg-slate-100 cursor-not-allowed opacity-60" : ""}`}
+                          
                         />
                         {errors[`dynamicValue_${field.id}`] && (
                           <p className="!mt-[8px] text-sm text-red-600 flex items-center gap-1.5">

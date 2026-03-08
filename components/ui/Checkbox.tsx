@@ -17,14 +17,14 @@ const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
     const inputId = id || props.name;
 
     return (
-      <div className="relative flex items-start">
-        <div className="flex h-6 items-center">
+      <div className={`relative flex items-cente`}>
+        <div className="flex items-center">
           <input
             ref={ref}
             id={inputId}
             type="checkbox"
             className={cn(
-              "h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer !mr-[4px]",
+              "!h-[16px] !w-[16px] rounded border-gray-300 text-primary focus:ring-primary cursor-pointer !mr-[8px]",
               error && "border-red-300",
               props.disabled && "cursor-not-allowed opacity-50",
               className,

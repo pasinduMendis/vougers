@@ -89,6 +89,7 @@ export function ProviderSelector({
             disabled={disabled || providers.length === 0}
             label="Select All"
             description="Send quote request to all providers"
+            className="!p-[6px]"
           />
         </div>
 
@@ -96,8 +97,9 @@ export function ProviderSelector({
         {providers.length === 0 ? (
           <p className="text-sm text-gray-600 py-2">No providers available</p>
         ) : (
-          <div className="space-y-2 max-h-60 overflow-y-auto">
+          <div className="space-y-2 max-h-60 overflow-y-auto !mb-[8px]">
             {providers.map((provider) => (
+              <div className="!mb-[8px]">
               <Checkbox
                 key={provider._id}
                 checked={selectedIds.includes(provider._id)}
@@ -106,13 +108,15 @@ export function ProviderSelector({
                 }
                 disabled={disabled}
                 label={provider.name}
+                className=""
               />
+              </div>
             ))}
           </div>
         )}
 
         {/* Selected Count */}
-        <div className="mt-3 pt-3 border-t border-gray-200">
+        <div className="!py-[12px] pt-3 border-t border-gray-200">
           <p className="text-sm text-gray-600">
             Selected: {selectedIds.length} of {providers.length} provider
             {providers.length !== 1 ? "s" : ""}
