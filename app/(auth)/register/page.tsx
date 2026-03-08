@@ -328,7 +328,7 @@ export default function RegisterPage() {
                 {/* Client-specific Fields */}
                 {userType === 'client' && (
                   <div className="space-y-4 sm:space-y-5 pt-2 border-t border-slate-100">
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wider pt-2">Company Details</p>
+                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wider !py-[16px]">Company Details</p>
                     <Input
                       name="companyName"
                       label="Company Name"
