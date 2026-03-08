@@ -89,9 +89,9 @@ export function FilterPanel({
   );
 
   return (
-    <div className={cn('bg-white rounded-lg border border-gray-200 p-4', className)}>
+    <div className={cn('bg-white rounded-lg border border-gray-200 !p-[16px]', className)}>
       {/* Main Filter Row */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row gap-3 md:items-center">
         {/* Search */}
         <div className="flex-1">
           <Input
@@ -136,7 +136,7 @@ export function FilterPanel({
           <select
             value={filters.sortBy || 'createdAt'}
             onChange={handleSortChange}
-            className="block rounded-lg border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-0 focus:border-primary focus:ring-primary sm:text-sm"
+            className="block rounded-lg border border-gray-300 !px-[8px] !h-[48px] py-2 text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-0 focus:border-primary focus:ring-primary sm:text-sm"
           >
             {SORT_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -202,7 +202,7 @@ export function FilterPanel({
           )}
 
           {/* Sort */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 !my-[8px]">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Sort By
@@ -210,7 +210,7 @@ export function FilterPanel({
               <select
                 value={filters.sortBy || 'createdAt'}
                 onChange={handleSortChange}
-                className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-0 focus:border-primary focus:ring-primary sm:text-sm"
+                className="block w-full rounded-lg border border-gray-300 !h-[48px] !px-[8px] py-2 text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-0 focus:border-primary focus:ring-primary sm:text-sm"
               >
                 {SORT_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>

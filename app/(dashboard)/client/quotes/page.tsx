@@ -153,14 +153,14 @@ export default function ClientQuotesPage() {
                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
               />
             </svg>
-            <h3 className="mt-4 text-lg font-medium text-gray-900">
+            <h3 className="text-lg font-medium text-gray-900">
               No quote requests yet
             </h3>
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="!mt-[4px] text-sm text-gray-600">
               Create your first quote request to get pricing from service
               providers.
             </p>
-            <div className="mt-6">
+            <div className="!my-[16px]">
               <Link href="/client/quotes/new">
                 <Button>Create Quote Request</Button>
               </Link>
@@ -201,7 +201,7 @@ export default function ClientQuotesPage() {
                       </svg>
                       <span>{request.portOfDischarge}</span>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-600">
+                    <div className="!mt-[4px] flex flex-wrap gap-4 text-sm text-gray-600">
                       {request.commodity && (
                         <span>Commodity: {request.commodity}</span>
                       )}
@@ -221,7 +221,7 @@ export default function ClientQuotesPage() {
                 </div>
 
                 {/* View Details Link */}
-                <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end">
+                <div className="!mt-[8px] pt-4 border-t border-gray-100 flex justify-end">
                   <span className="text-sm text-primary font-medium flex items-center gap-1">
                     View Quotes
                     <svg

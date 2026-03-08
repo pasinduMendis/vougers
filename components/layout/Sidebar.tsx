@@ -201,7 +201,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "hidden md:flex md:flex-col md:inset-y-0 bg-slate-50 border-r border-slate-200",
+        "hidden md:flex md:flex-col md:inset-y-0 bg-slate-50 border-r border-slate-200 min-h-[100vh]",
         className,
       )}
     >

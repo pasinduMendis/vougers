@@ -90,7 +90,7 @@ export function Header({ user, onLogout, onMenuClick, className }: HeaderProps) 
             />
 
             {/* Menu */}
-            <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 py-2 z-20">
+            <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 !p-[16px] z-20">
               <div className="px-4 py-3 border-b border-slate-100">
                 <p className="text-sm font-semibold text-slate-800">{user?.name}</p>
                 <p className="text-sm text-slate-600">{user?.email}</p>
@@ -108,7 +108,7 @@ export function Header({ user, onLogout, onMenuClick, className }: HeaderProps) 
                 </div>
               )}
 
-              <div className="px-2 pt-2">
+              <div className="px-2 !pt-[8px]">
                 <button
                   type="button"
                   className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 rounded-xl transition-colors flex items-center gap-2"
