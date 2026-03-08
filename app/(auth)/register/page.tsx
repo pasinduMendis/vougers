@@ -153,7 +153,7 @@ export default function RegisterPage() {
       <main className="flex-1 flex items-center justify-center w-full px-4 py-8 sm:px-6 md:px-8 lg:py-12">
         <div className="w-full max-w-[520px]">
           {/* Logo & Header */}
-          <div className="text-center mb-6 sm:mb-8">
+          <div className="text-center !my-[24px]">
             <Link href="/" className="inline-flex justify-center">
               <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-xl shadow-indigo-500/25 transform hover:scale-105 transition-transform">
                 <span className="text-white font-bold text-3xl">V</span>
@@ -168,18 +168,18 @@ export default function RegisterPage() {
           </div>
 
           {/* Registration Form Card */}
-          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200/60 overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200/60 overflow-hidden !p-[24px] !mx-[16px]">
             {/* User Type Selection */}
             <div className="px-5 sm:px-8 pt-6 sm:pt-8 pb-5 border-b border-slate-100 bg-gradient-to-b from-slate-50/80 to-white">
-              <label className="block text-sm font-semibold text-slate-700 mb-4">
+              <label className="block text-sm font-semibold text-slate-700 !mb-[16px]">
                 I am a...
               </label>
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 !mb-[16px]">
                 {/* Client Option */}
                 <button
                   type="button"
                   onClick={() => setUserType('client')}
-                  className={`relative p-4 sm:p-5 rounded-xl border-2 text-center transition-all duration-200 ${
+                  className={`relative !p-[16px] sm:p-5 rounded-xl border-2 text-center transition-all duration-200 ${
                     userType === 'client'
                       ? 'border-indigo-500 bg-indigo-50/80 shadow-lg shadow-indigo-500/10'
                       : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
@@ -221,7 +221,7 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setUserType('provider')}
-                  className={`relative p-4 sm:p-5 rounded-xl border-2 text-center transition-all duration-200 ${
+                  className={`relative !p-[16px] sm:p-5 rounded-xl border-2 text-center transition-all duration-200 ${
                     userType === 'provider'
                       ? 'border-indigo-500 bg-indigo-50/80 shadow-lg shadow-indigo-500/10'
                       : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
@@ -266,7 +266,7 @@ export default function RegisterPage() {
               <div className="space-y-4 sm:space-y-5">
                 {/* Error Display */}
                 {error && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex items-start gap-3 animate-in fade-in duration-200">
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 !my-[16px] rounded-xl text-sm flex items-start gap-3 animate-in fade-in duration-200">
                     <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                     </svg>
@@ -283,6 +283,7 @@ export default function RegisterPage() {
                   onChange={handleChange}
                   error={errors.name}
                   disabled={isSubmitting}
+                  className='!mb-[16px]'
                 />
 
                 <Input
@@ -294,6 +295,7 @@ export default function RegisterPage() {
                   onChange={handleChange}
                   error={errors.email}
                   disabled={isSubmitting}
+                  className='!mb-[16px]'
                 />
 
                 {/* Password Fields - Side by side on tablet+ */}
@@ -307,6 +309,7 @@ export default function RegisterPage() {
                     onChange={handleChange}
                     error={errors.password}
                     disabled={isSubmitting}
+                    className='!mb-[16px]'
                   />
 
                   <Input
@@ -318,6 +321,7 @@ export default function RegisterPage() {
                     onChange={handleChange}
                     error={errors.confirmPassword}
                     disabled={isSubmitting}
+                    className='!mb-[16px]'
                   />
                 </div>
 
@@ -333,6 +337,7 @@ export default function RegisterPage() {
                       onChange={handleChange}
                       error={errors.companyName}
                       disabled={isSubmitting}
+                      className='!mb-[16px]'
                     />
                     <Input
                       name="companyAddress"
@@ -342,6 +347,7 @@ export default function RegisterPage() {
                       onChange={handleChange}
                       error={errors.companyAddress}
                       disabled={isSubmitting}
+                      className='!mb-[16px]'
                     />
                   </div>
                 )}
@@ -349,7 +355,7 @@ export default function RegisterPage() {
                 {/* Provider-specific Fields */}
                 {userType === 'provider' && (
                   <div className="space-y-4 sm:space-y-5 pt-2 border-t border-slate-100">
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wider pt-2">Organization Details</p>
+                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wider !py-[16px]">Organization Details</p>
                     <Input
                       name="organizationName"
                       label="Organization Name"
@@ -358,6 +364,7 @@ export default function RegisterPage() {
                       onChange={handleChange}
                       error={errors.organizationName}
                       disabled={isSubmitting}
+                      className='!mb-[16px]'
                     />
                   </div>
                 )}
@@ -371,6 +378,7 @@ export default function RegisterPage() {
                   size="lg"
                   isLoading={isSubmitting}
                   disabled={isSubmitting}
+                  className='!mb-[16px]'
                 >
                   {isSubmitting ? 'Creating Account...' : 'Create Account'}
                 </Button>

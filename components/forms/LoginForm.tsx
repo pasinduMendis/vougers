@@ -77,19 +77,19 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
 
   return (
     <div className="w-full">
-      <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200/60 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200/60 overflow-hidden !p-[36px] !mt-[24px] !mx-[16px]">
         {/* Header */}
-        <div className="px-5 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 text-center border-b border-slate-100 bg-gradient-to-b from-slate-50/80 to-white">
+        <div className="px-5 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 text-center border-b border-slate-100 bg-gradient-to-b from-slate-50/80 to-whit !pb-[24px]">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Welcome Back</h2>
           <p className="mt-1.5 text-sm text-slate-600">Sign in to your account to continue</p>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="px-5 sm:px-8 py-6 sm:py-8">
-          <div className="space-y-5">
+        <form onSubmit={handleSubmit} className="px-5 sm:px-8 !my-[24px]">
+          <div className="!mb-[24px]">
             {/* Error Display */}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex items-start gap-3 animate-in fade-in duration-200">
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 !my-[16px] rounded-xl text-sm flex items-start gap-3 animate-in fade-in duration-200">
                 <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
@@ -107,6 +107,7 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
               error={errors.email}
               disabled={isLoading}
               autoComplete="email"
+              className='!mb-[16px]'
             />
 
             <Input
@@ -130,6 +131,7 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
               size="lg"
               isLoading={isLoading}
               disabled={isLoading}
+              className='!mb-[16px]'
             >
               {isLoading ? 'Signing in...' : 'Sign In'}
             </Button>
