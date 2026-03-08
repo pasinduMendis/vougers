@@ -1,0 +1,29 @@
+# Ignore all files ending in .log
+*.log
+
+# Ignore a specific file named secret.config
+/secret.config
+
+# Ignore everything in the 'build' directory
+build/
+
+# Ignore a folder named 'node_modules' anywhere in the project
+node_modules/
+
+# Ignore all files in any directory named debug
+**/debug/*
+
+# Exclude a specific file from an otherwise ignored directory (using !)
+!build/important_output.txt
+
+# Ignore OS-specific files (macOS)
+.DS_Store
+
+# Ignore editor/IDE settings (VS Code)
+.vscode/
+
+.next/
+
+# Ignore virtual environment folders (Python)
+.venv/
+env/
