@@ -1,6 +1,7 @@
 import { Types, PipelineStage } from 'mongoose';
 import { connectDB } from '../db/connection';
 import QuoteModel, { IQuote } from '../models/quote.model';
+import OrganizationModel from '../models/organization.model';
 import {
   QuoteStatus,
   QuoteFilters,
@@ -14,6 +15,35 @@ import {
 } from '../types/api.types';
 import { isValidTransition } from '../../constants/statuses';
 import { UserType } from '../types/auth.types';
+import {
+  emitQuotePriced,
+  emitQuoteRepriced,
+  emitQuoteStatusChanged,
+  emitQuoteStatusChangedToProviders,
+  emitNegotiationRejected,
+} from './socket.service';
+import {
+  notifyQuotePriced,
+  notifyQuoteRepriced,
+  notifyQuoteApproved,
+  notifyQuoteRejected,
+  notifyQuoteCompleted,
+  notifyQuoteLost,
+  notifyQuoteMissed,
+  notifyNegotiationRejected,
+  notifySupplierDetailsAdded,
+  notifyAgentDetailsAdded,
+} from './notification.service';
+import QuoteRequestModel from '../models/quote-request.model';
+import ClientModel from '../models/client.model';
+
+// Helper to format currency for notifications
+function formatCurrencySimple(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(amount);
+}
 
 /**
  * Get quotes for a client with pagination
@@ -104,6 +134,15 @@ export async function getQuotesByClient(
         pricedAt: 1,
         pricedBy: 1,
         status: 1,
+        negotiationRequested: 1,
+        negotiationMessage: 1,
+        negotiationRequestedAt: 1,
+        priceHistory: 1,
+        supplierDetails: 1,
+        supplierDetailsAddedAt: 1,
+        agentDetails: 1,
+        agentDetailsAddedAt: 1,
+        agentDetailsAddedBy: 1,
         createdAt: 1,
         updatedAt: 1,
         provider: {
@@ -141,6 +180,15 @@ export async function getQuotesByClient(
     pricedAt: q.pricedAt,
     pricedBy: q.pricedBy?.toString(),
     status: q.status,
+    negotiationRequested: q.negotiationRequested,
+    negotiationMessage: q.negotiationMessage,
+    negotiationRequestedAt: q.negotiationRequestedAt,
+    priceHistory: q.priceHistory,
+    supplierDetails: q.supplierDetails,
+    supplierDetailsAddedAt: q.supplierDetailsAddedAt,
+    agentDetails: q.agentDetails,
+    agentDetailsAddedAt: q.agentDetailsAddedAt,
+    agentDetailsAddedBy: q.agentDetailsAddedBy?.toString(),
     createdAt: q.createdAt,
     updatedAt: q.updatedAt,
   }));
@@ -301,6 +349,11 @@ export async function getQuotesByProvider(
         negotiationMessage: 1,
         negotiationRequestedAt: 1,
         priceHistory: 1,
+        supplierDetails: 1,
+        supplierDetailsAddedAt: 1,
+        agentDetails: 1,
+        agentDetailsAddedAt: 1,
+        agentDetailsAddedBy: 1,
         createdAt: 1,
         updatedAt: 1,
         client: {
@@ -344,6 +397,11 @@ export async function getQuotesByProvider(
     negotiationMessage: q.negotiationMessage,
     negotiationRequestedAt: q.negotiationRequestedAt,
     priceHistory: q.priceHistory,
+    supplierDetails: q.supplierDetails,
+    supplierDetailsAddedAt: q.supplierDetailsAddedAt,
+    agentDetails: q.agentDetails,
+    agentDetailsAddedAt: q.agentDetailsAddedAt,
+    agentDetailsAddedBy: q.agentDetailsAddedBy?.toString(),
     createdAt: q.createdAt,
     updatedAt: q.updatedAt,
   }));
@@ -451,6 +509,10 @@ export async function priceQuote(
   quote.pricedBy = new Types.ObjectId(userId);
   quote.status = 'priced';
 
+  // Store previous values before updating (for reprice event)
+  const previousFreightCost = isReprice ? quote.priceHistory?.[quote.priceHistory.length - 1]?.freightCost : undefined;
+  const previousTransitDays = isReprice ? quote.priceHistory?.[quote.priceHistory.length - 1]?.transitDays : undefined;
+
   // Clear negotiation flag after re-pricing
   if (isReprice) {
     quote.negotiationRequested = false;
@@ -458,6 +520,61 @@ export async function priceQuote(
   }
 
   await quote.save();
+
+  // Get provider name for the event payload
+  const provider = await OrganizationModel.findById(organizationId).select('name').lean();
+  const providerName = provider?.name || 'Unknown Provider';
+
+  // Emit socket event
+  const eventPayload = {
+    quoteId: quote._id.toString(),
+    quoteRequestId: quote.quoteRequestId.toString(),
+    clientId: quote.clientId.toString(),
+    serviceProviderId: organizationId,
+    providerName,
+    freightCost: payload.freightCost,
+    transitDays: payload.transitDays,
+    pricedAt: quote.pricedAt || new Date(),
+  };
+
+  if (isReprice && previousFreightCost !== undefined && previousTransitDays !== undefined) {
+    emitQuoteRepriced({
+      ...eventPayload,
+      previousFreightCost,
+      previousTransitDays,
+    });
+  } else {
+    emitQuotePriced(eventPayload);
+  }
+
+  // Get quote request for route info
+  const quoteRequest = await QuoteRequestModel.findById(quote.quoteRequestId)
+    .select('portOfLoading portOfDischarge')
+    .lean();
+  const route = quoteRequest
+    ? `${quoteRequest.portOfLoading} → ${quoteRequest.portOfDischarge}`
+    : 'Unknown Route';
+
+  // Create notification for client
+  if (isReprice) {
+    notifyQuoteRepriced({
+      clientId: quote.clientId.toString(),
+      quoteId: quote._id.toString(),
+      quoteRequestId: quote.quoteRequestId.toString(),
+      providerName,
+      route,
+      price: formatCurrencySimple(payload.freightCost),
+    }).catch((err) => console.error('Failed to create reprice notification:', err));
+  } else {
+    notifyQuotePriced({
+      clientId: quote.clientId.toString(),
+      quoteId: quote._id.toString(),
+      quoteRequestId: quote.quoteRequestId.toString(),
+      providerName,
+      route,
+      price: formatCurrencySimple(payload.freightCost),
+    }).catch((err) => console.error('Failed to create price notification:', err));
+  }
 
   return { success: true, data: quote, isReprice };
 }
@@ -470,7 +587,7 @@ export async function updateQuoteStatus(
   newStatus: QuoteStatus,
   actorType: UserType,
   actorId: string
-): Promise<{ success: boolean; data?: IQuote; error?: string; autoRejectedCount?: number }> {
+): Promise<{ success: boolean; data?: IQuote; error?: string; autoLostCount?: number; autoMissedCount?: number }> {
   await connectDB();
 
   const quote = await QuoteModel.findById(quoteId);
@@ -478,6 +595,9 @@ export async function updateQuoteStatus(
   if (!quote) {
     return { success: false, error: 'Quote not found' };
   }
+
+  // Store old status for event
+  const oldStatus = quote.status;
 
   // Verify ownership
   if (actorType === 'client') {
@@ -499,19 +619,353 @@ export async function updateQuoteStatus(
   quote.status = newStatus;
   await quote.save();
 
-  // Auto-reject other priced quotes when client approves one
-  let autoRejectedCount = 0;
+  // Auto-update other quotes when client approves one
+  // - priced quotes become 'lost' (provider priced but wasn't chosen)
+  // - pending quotes become 'missed' (provider didn't price in time)
+  let autoLostCount = 0;
+  let autoMissedCount = 0;
+  const affectedProviderIds: string[] = [];
+  let lostQuotesData: { _id: Types.ObjectId; serviceProviderId: Types.ObjectId }[] = [];
+  let missedQuotesData: { _id: Types.ObjectId; serviceProviderId: Types.ObjectId }[] = [];
+
   if (actorType === 'client' && newStatus === 'approved') {
-    const result = await QuoteModel.updateMany(
+    // Get provider IDs of quotes that will be marked as lost
+    lostQuotesData = await QuoteModel.find({
+      quoteRequestId: quote.quoteRequestId,
+      _id: { $ne: quote._id },
+      status: 'priced',
+    }).select('_id serviceProviderId').lean();
+
+    // Get provider IDs of quotes that will be marked as missed
+    missedQuotesData = await QuoteModel.find({
+      quoteRequestId: quote.quoteRequestId,
+      _id: { $ne: quote._id },
+      status: 'pending',
+    }).select('_id serviceProviderId').lean();
+
+    // Collect all affected provider IDs
+    lostQuotesData.forEach(q => affectedProviderIds.push(q.serviceProviderId.toString()));
+    missedQuotesData.forEach(q => affectedProviderIds.push(q.serviceProviderId.toString()));
+
+    // Mark priced quotes as 'lost'
+    const lostResult = await QuoteModel.updateMany(
       {
         quoteRequestId: quote.quoteRequestId,
         _id: { $ne: quote._id },
         status: 'priced',
       },
-      { status: 'rejected' }
+      { status: 'lost' }
     );
-    autoRejectedCount = result.modifiedCount;
+    autoLostCount = lostResult.modifiedCount;
+
+    // Mark pending quotes as 'missed'
+    const missedResult = await QuoteModel.updateMany(
+      {
+        quoteRequestId: quote.quoteRequestId,
+        _id: { $ne: quote._id },
+        status: 'pending',
+      },
+      { status: 'missed' }
+    );
+    autoMissedCount = missedResult.modifiedCount;
   }
 
-  return { success: true, data: quote, autoRejectedCount };
+  // Emit socket event for status change
+  const statusChangePayload = {
+    quoteId: quote._id.toString(),
+    quoteRequestId: quote.quoteRequestId.toString(),
+    clientId: quote.clientId.toString(),
+    serviceProviderId: quote.serviceProviderId.toString(),
+    oldStatus,
+    newStatus,
+    autoLostCount,
+    autoMissedCount,
+  };
+
+  emitQuoteStatusChanged(statusChangePayload);
+
+  // If quote was approved, notify all affected providers about their lost/missed status
+  if (newStatus === 'approved' && affectedProviderIds.length > 0) {
+    emitQuoteStatusChangedToProviders(affectedProviderIds, {
+      ...statusChangePayload,
+      newStatus: 'lost', // They'll see their quote as lost or missed
+    });
+  }
+
+  // Get quote request for route info
+  const quoteRequestForNotif = await QuoteRequestModel.findById(quote.quoteRequestId)
+    .select('portOfLoading portOfDischarge')
+    .lean();
+  const routeForNotif = quoteRequestForNotif
+    ? `${quoteRequestForNotif.portOfLoading} → ${quoteRequestForNotif.portOfDischarge}`
+    : 'Unknown Route';
+
+  // Create notifications based on status change
+  if (actorType === 'client' && newStatus === 'approved') {
+    // Notify the winning provider
+    notifyQuoteApproved({
+      providerId: quote.serviceProviderId.toString(),
+      quoteId: quote._id.toString(),
+      quoteRequestId: quote.quoteRequestId.toString(),
+      clientName: 'Client', // Will be populated from client lookup
+      route: routeForNotif,
+    }).catch((err) => console.error('Failed to create approval notification:', err));
+
+    // Notify lost providers
+    for (const lostQuote of lostQuotesData) {
+      notifyQuoteLost({
+        providerId: lostQuote.serviceProviderId.toString(),
+        quoteId: lostQuote._id.toString(),
+        quoteRequestId: quote.quoteRequestId.toString(),
+        route: routeForNotif,
+      }).catch((err) => console.error('Failed to create lost notification:', err));
+    }
+
+    // Notify missed providers
+    for (const missedQuote of missedQuotesData) {
+      notifyQuoteMissed({
+        providerId: missedQuote.serviceProviderId.toString(),
+        quoteId: missedQuote._id.toString(),
+        quoteRequestId: quote.quoteRequestId.toString(),
+        route: routeForNotif,
+      }).catch((err) => console.error('Failed to create missed notification:', err));
+    }
+  } else if (actorType === 'client' && newStatus === 'rejected') {
+    // Notify provider that their quote was rejected
+    notifyQuoteRejected({
+      providerId: quote.serviceProviderId.toString(),
+      quoteId: quote._id.toString(),
+      quoteRequestId: quote.quoteRequestId.toString(),
+      clientName: 'Client',
+      route: routeForNotif,
+    }).catch((err) => console.error('Failed to create rejection notification:', err));
+  } else if (actorType === 'provider' && newStatus === 'completed') {
+    // Notify client that shipment is completed
+    notifyQuoteCompleted({
+      clientId: quote.clientId.toString(),
+      quoteId: quote._id.toString(),
+      quoteRequestId: quote.quoteRequestId.toString(),
+      route: routeForNotif,
+    }).catch((err) => console.error('Failed to create completion notification:', err));
+  }
+
+  return { success: true, data: quote, autoLostCount, autoMissedCount };
+}
+
+/**
+ * Reject negotiation request (provider action)
+ * Clears negotiation request while keeping current price
+ */
+export async function rejectNegotiation(
+  quoteId: string,
+  organizationId: string
+): Promise<{ success: boolean; data?: IQuote; error?: string }> {
+  await connectDB();
+
+  const quote = await QuoteModel.findOne({
+    _id: quoteId,
+    serviceProviderId: new Types.ObjectId(organizationId),
+  });
+
+  if (!quote) {
+    return { success: false, error: 'Quote not found' };
+  }
+
+  // Can only reject negotiation if there's a pending negotiation request
+  if (!quote.negotiationRequested) {
+    return { success: false, error: 'No negotiation request to reject' };
+  }
+
+  // Must be a priced quote to have negotiation
+  if (quote.status !== 'priced') {
+    return { success: false, error: 'Quote must be in priced status' };
+  }
+
+  // Clear negotiation flags but keep the price
+  quote.negotiationRequested = false;
+  quote.negotiationRejectedAt = new Date();
+  // Keep negotiationMessage for history/audit purposes
+
+  await quote.save();
+
+  // Get provider name for the event payload
+  const provider = await OrganizationModel.findById(organizationId).select('name').lean();
+  const providerName = provider?.name || 'Unknown Provider';
+
+  // Emit socket event to notify client
+  emitNegotiationRejected({
+    quoteId: quote._id.toString(),
+    quoteRequestId: quote.quoteRequestId.toString(),
+    clientId: quote.clientId.toString(),
+    serviceProviderId: organizationId,
+    providerName,
+    freightCost: quote.freightCost || 0,
+    transitDays: quote.transitDays || 0,
+    rejectedAt: quote.negotiationRejectedAt,
+  });
+
+  // Get quote request for route info and create notification
+  const quoteRequestForNotif = await QuoteRequestModel.findById(quote.quoteRequestId)
+    .select('portOfLoading portOfDischarge')
+    .lean();
+  const routeForNotif = quoteRequestForNotif
+    ? `${quoteRequestForNotif.portOfLoading} → ${quoteRequestForNotif.portOfDischarge}`
+    : 'Unknown Route';
+
+  notifyNegotiationRejected({
+    clientId: quote.clientId.toString(),
+    quoteId: quote._id.toString(),
+    quoteRequestId: quote.quoteRequestId.toString(),
+    providerName,
+    route: routeForNotif,
+  }).catch((err) => console.error('Failed to create negotiation rejected notification:', err));
+
+  return { success: true, data: quote };
+}
+
+/**
+ * Add supplier details to an approved quote (client action)
+ */
+export async function addSupplierDetails(
+  quoteId: string,
+  clientId: string,
+  supplierDetails: string
+): Promise<{ success: boolean; data?: IQuote; error?: string }> {
+  await connectDB();
+
+  const quote = await QuoteModel.findOne({
+    _id: quoteId,
+    clientId: new Types.ObjectId(clientId),
+  });
+
+  if (!quote) {
+    return { success: false, error: 'Quote not found' };
+  }
+
+  // Can only add supplier details to approved quotes
+  if (quote.status !== 'approved') {
+    return { success: false, error: 'Supplier details can only be added to approved quotes' };
+  }
+
+  // Update supplier details
+  quote.supplierDetails = supplierDetails;
+  quote.supplierDetailsAddedAt = new Date();
+
+  await quote.save();
+
+  // Get client name for notification
+  const client = await ClientModel.findById(clientId).select('name').lean();
+  const clientName = client?.name || 'Client';
+
+  // Get quote request for route info
+  const quoteRequest = await QuoteRequestModel.findById(quote.quoteRequestId)
+    .select('portOfLoading portOfDischarge')
+    .lean();
+  const route = quoteRequest
+    ? `${quoteRequest.portOfLoading} → ${quoteRequest.portOfDischarge}`
+    : 'Unknown Route';
+
+  // Notify the provider
+  notifySupplierDetailsAdded({
+    providerId: quote.serviceProviderId.toString(),
+    quoteId: quote._id.toString(),
+    quoteRequestId: quote.quoteRequestId.toString(),
+    clientName,
+    route,
+  }).catch((err) => console.error('Failed to create supplier details notification:', err));
+
+  return { success: true, data: quote };
+}
+
+/**
+ * Add agent details to an approved quote with supplier details (provider action)
+ * This completes the quote workflow and moves it to completed status
+ */
+export async function addAgentDetails(
+  quoteId: string,
+  organizationId: string,
+  userId: string,
+  agentDetails: string
+): Promise<{ success: boolean; data?: IQuote; error?: string }> {
+  await connectDB();
+
+  // First, find the quote to validate conditions
+  const existingQuote = await QuoteModel.findOne({
+    _id: quoteId,
+    serviceProviderId: new Types.ObjectId(organizationId),
+  });
+
+  if (!existingQuote) {
+    return { success: false, error: 'Quote not found' };
+  }
+
+  // Can only add agent details to approved quotes
+  if (existingQuote.status !== 'approved') {
+    return { success: false, error: 'Agent details can only be added to approved quotes' };
+  }
+
+  // Client must have submitted supplier details first
+  if (!existingQuote.supplierDetails) {
+    return { success: false, error: 'Client must submit supplier details first' };
+  }
+
+  // Use findOneAndUpdate to ensure atomic update and get the updated document
+  const updatedQuote = await QuoteModel.findOneAndUpdate(
+    {
+      _id: new Types.ObjectId(quoteId),
+      serviceProviderId: new Types.ObjectId(organizationId),
+      status: 'approved',
+    },
+    {
+      $set: {
+        agentDetails: agentDetails,
+        agentDetailsAddedAt: new Date(),
+        agentDetailsAddedBy: new Types.ObjectId(userId),
+        status: 'completed',
+      },
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+
+  if (!updatedQuote) {
+    return { success: false, error: 'Failed to update quote' };
+  }
+
+  // Get provider name for notification
+  const provider = await OrganizationModel.findById(organizationId).select('name').lean();
+  const providerName = provider?.name || 'Provider';
+
+  // Get quote request for route info
+  const quoteRequest = await QuoteRequestModel.findById(updatedQuote.quoteRequestId)
+    .select('portOfLoading portOfDischarge')
+    .lean();
+  const route = quoteRequest
+    ? `${quoteRequest.portOfLoading} → ${quoteRequest.portOfDischarge}`
+    : 'Unknown Route';
+
+  // Notify the client that shipment is completed
+  notifyAgentDetailsAdded({
+    clientId: updatedQuote.clientId.toString(),
+    quoteId: updatedQuote._id.toString(),
+    quoteRequestId: updatedQuote.quoteRequestId.toString(),
+    providerName,
+    route,
+  }).catch((err) => console.error('Failed to create agent details notification:', err));
+
+  // Also emit status changed event for real-time updates
+  emitQuoteStatusChanged({
+    quoteId: updatedQuote._id.toString(),
+    quoteRequestId: updatedQuote.quoteRequestId.toString(),
+    clientId: updatedQuote.clientId.toString(),
+    serviceProviderId: updatedQuote.serviceProviderId.toString(),
+    oldStatus: 'approved',
+    newStatus: 'completed',
+    autoLostCount: 0,
+    autoMissedCount: 0,
+  });
+
+  return { success: true, data: updatedQuote };
 }

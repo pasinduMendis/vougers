@@ -9,6 +9,8 @@ import { Modal, ModalFooter } from "@/components/ui/Modal";
 import { QuoteComparison } from "@/components/dashboard/QuoteComparison";
 import { useQuoteRequest } from "@/hooks/useQuotes";
 import { useQuoteMutations } from "@/hooks/useQuotes";
+import { useQuoteSubscription } from "@/hooks/useQuoteSubscription";
+import { useAuth } from "@/hooks/useAuth";
 import { formatDate, formatCurrency } from "@/src/lib/utils";
 import type { QuoteResponse } from "@/src/lib/types/quote.types";
 
@@ -19,13 +21,22 @@ interface PageProps {
 export default function QuoteRequestDetailPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
+  const { user } = useAuth();
   const { quoteRequest, isLoading, error, refresh } = useQuoteRequest(id);
   const {
     updateQuoteStatus,
     cancelQuoteRequest,
     requestNegotiation,
+    addSupplierDetails,
     isLoading: isMutating,
   } = useQuoteMutations();
+
+  // Subscribe to real-time quote updates
+  const { isConnected } = useQuoteSubscription({
+    clientId: user?.id,
+    quoteRequestId: id,
+    onAnyQuoteEvent: refresh, // Auto-refresh when any quote event occurs
+  });
 
   const [actionError, setActionError] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -107,6 +118,20 @@ export default function QuoteRequestDetailPage({ params }: PageProps) {
         err instanceof Error ? err.message : "Failed to cancel quote request";
       setActionError(message);
       setShowCancelConfirm(false);
+    }
+  };
+
+  // Handle add supplier details
+  const handleAddSupplierDetails = async (quote: QuoteResponse, details: string) => {
+    try {
+      setActionError(null);
+      await addSupplierDetails(quote._id, details);
+      refresh();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to add supplier details";
+      setActionError(message);
+      throw err; // Re-throw so the modal can handle the error
     }
   };
 
@@ -287,6 +312,7 @@ export default function QuoteRequestDetailPage({ params }: PageProps) {
         onApprove={handleApprove}
         onReject={handleReject}
         onNegotiate={handleOpenNegotiateModal}
+        onAddSupplierDetails={handleAddSupplierDetails}
       />
 
       {/* Negotiation Modal */}

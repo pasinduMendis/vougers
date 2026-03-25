@@ -14,6 +14,10 @@ interface QuoteListProps {
   onApprove?: (quote: QuoteTableItem) => void;
   onReject?: (quote: QuoteTableItem) => void;
   onComplete?: (quote: QuoteTableItem) => void;
+  onRejectNegotiation?: (quote: QuoteTableItem) => void;
+  onAddAgentDetails?: (quote: QuoteTableItem) => void;
+  onViewSupplierDetails?: (quote: QuoteTableItem) => void;
+  onViewAgentDetails?: (quote: QuoteTableItem) => void;
   onQuoteClick?: (quote: QuoteTableItem) => void;
   isLoading?: boolean;
 }
@@ -25,6 +29,10 @@ export function QuoteList({
   onApprove,
   onReject,
   onComplete,
+  onRejectNegotiation,
+  onAddAgentDetails,
+  onViewSupplierDetails,
+  onViewAgentDetails,
   onQuoteClick,
   isLoading = false,
 }: QuoteListProps) {
@@ -85,6 +93,10 @@ export function QuoteList({
             onApprove={onApprove}
             onReject={onReject}
             onComplete={onComplete}
+            onRejectNegotiation={onRejectNegotiation}
+            onAddAgentDetails={onAddAgentDetails}
+            onViewSupplierDetails={onViewSupplierDetails}
+            onViewAgentDetails={onViewAgentDetails}
             onClick={onQuoteClick}
           />
         ))}
@@ -102,6 +114,11 @@ export function QuoteList({
       onApprove={onApprove}
       onReject={onReject}
       onComplete={onComplete}
+      onRejectNegotiation={onRejectNegotiation}
+      onAddAgentDetails={onAddAgentDetails}
+      onViewSupplierDetails={onViewSupplierDetails}
+      onViewAgentDetails={onViewAgentDetails}
+      onQuoteClick={onQuoteClick}
     />
   );
 }

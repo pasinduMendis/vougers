@@ -23,7 +23,15 @@ export interface IQuote extends Document {
   negotiationRequested?: boolean;
   negotiationMessage?: string;
   negotiationRequestedAt?: Date;
+  negotiationRejectedAt?: Date;
   priceHistory?: PriceHistoryEntry[];
+  // Supplier details (added by client after approval)
+  supplierDetails?: string;
+  supplierDetailsAddedAt?: Date;
+  // Agent details (added by provider after client submits supplier details)
+  agentDetails?: string;
+  agentDetailsAddedAt?: Date;
+  agentDetailsAddedBy?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -66,7 +74,7 @@ const QuoteSchema: Schema<IQuote> = new Schema(
     status: {
       type: String,
       enum: {
-        values: ['pending', 'priced', 'approved', 'rejected', 'completed'],
+        values: ['pending', 'priced', 'approved', 'rejected', 'completed', 'lost', 'missed'],
         message: 'Invalid status value',
       },
       default: 'pending',
@@ -84,6 +92,9 @@ const QuoteSchema: Schema<IQuote> = new Schema(
     negotiationRequestedAt: {
       type: Date,
     },
+    negotiationRejectedAt: {
+      type: Date,
+    },
     priceHistory: [
       {
         freightCost: { type: Number, required: true },
@@ -92,6 +103,26 @@ const QuoteSchema: Schema<IQuote> = new Schema(
         pricedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
       },
     ],
+    // Supplier details (added by client after approval)
+    supplierDetails: {
+      type: String,
+      maxlength: [2000, 'Supplier details cannot exceed 2000 characters'],
+    },
+    supplierDetailsAddedAt: {
+      type: Date,
+    },
+    // Agent details (added by provider after client submits supplier details)
+    agentDetails: {
+      type: String,
+      maxlength: [2000, 'Agent details cannot exceed 2000 characters'],
+    },
+    agentDetailsAddedAt: {
+      type: Date,
+    },
+    agentDetailsAddedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
   },
   {
     timestamps: true,

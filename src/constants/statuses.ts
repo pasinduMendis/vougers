@@ -8,6 +8,8 @@ export const QUOTE_STATUSES = {
   APPROVED: 'approved',
   REJECTED: 'rejected',
   COMPLETED: 'completed',
+  LOST: 'lost',
+  MISSED: 'missed',
 } as const;
 
 // All quote statuses array
@@ -17,6 +19,8 @@ export const ALL_QUOTE_STATUSES: QuoteStatus[] = [
   'approved',
   'rejected',
   'completed',
+  'lost',
+  'missed',
 ];
 
 // Valid status transitions based on actor type
@@ -27,13 +31,17 @@ export const VALID_TRANSITIONS: Record<UserType, Record<QuoteStatus, QuoteStatus
     approved: [],                   // No further client action
     rejected: [],                   // No further client action
     completed: [],                  // Final state
+    lost: [],                       // Terminal state (provider-only visibility)
+    missed: [],                     // Terminal state (provider-only visibility)
   },
   provider: {
     pending: ['priced', 'rejected'], // Provider can price or reject
     priced: ['rejected'],            // Provider can reject after pricing
-    approved: ['completed'],         // Provider can mark completed
+    approved: [],                    // Provider completes via addAgentDetails (not direct status change)
     rejected: [],                    // No action on rejected
     completed: [],                   // Final state
+    lost: [],                        // Terminal state - priced but another provider chosen
+    missed: [],                      // Terminal state - didn't price, another provider chosen
   },
 } as const;
 
@@ -62,6 +70,19 @@ export const STATUS_DISPLAY_NAMES: Record<QuoteStatus, string> = {
   approved: 'Approved',
   rejected: 'Rejected',
   completed: 'Completed',
+  lost: 'Lost',
+  missed: 'Missed',
+};
+
+// Status display names for clients (maps provider-only statuses to rejected)
+export const STATUS_DISPLAY_NAMES_CLIENT: Record<QuoteStatus, string> = {
+  pending: 'Pending',
+  priced: 'Priced',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  completed: 'Completed',
+  lost: 'Rejected',      // Clients see "rejected" instead of "lost"
+  missed: 'Rejected',    // Clients see "rejected" instead of "missed"
 };
 
 // Status colors for UI
@@ -71,6 +92,8 @@ export const STATUS_COLORS: Record<QuoteStatus, string> = {
   approved: 'green',
   rejected: 'red',
   completed: 'gray',
+  lost: 'orange',
+  missed: 'slate',
 };
 
 // Status descriptions
@@ -80,11 +103,13 @@ export const STATUS_DESCRIPTIONS: Record<QuoteStatus, string> = {
   approved: 'Client has approved this quote',
   rejected: 'Quote has been rejected',
   completed: 'Shipment has been completed',
+  lost: 'Quote was priced but client chose another provider',
+  missed: 'Quote was not priced and client chose another provider',
 };
 
 // Check if status is terminal (no more transitions possible)
 export function isTerminalStatus(status: QuoteStatus): boolean {
-  return status === 'rejected' || status === 'completed';
+  return status === 'rejected' || status === 'completed' || status === 'lost' || status === 'missed';
 }
 
 // Check if quote is actionable by client

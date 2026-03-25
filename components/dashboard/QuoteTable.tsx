@@ -20,11 +20,16 @@ export interface QuoteTableItem extends QuoteResponse {
     portOfLoading: string;
     portOfDischarge: string;
     commodity?: string;
+    volume?: string;
+    pickupAddress?: string;
     extraFields?: Record<string, unknown>;
+    createdAt?: string;
   };
   client?: {
+    _id?: string;
     name: string;
-    companyName: string;
+    companyName?: string;
+    email?: string;
   };
 }
 
@@ -36,6 +41,11 @@ interface QuoteTableProps {
   onApprove?: (quote: QuoteTableItem) => void;
   onReject?: (quote: QuoteTableItem) => void;
   onComplete?: (quote: QuoteTableItem) => void;
+  onRejectNegotiation?: (quote: QuoteTableItem) => void;
+  onAddAgentDetails?: (quote: QuoteTableItem) => void;
+  onViewSupplierDetails?: (quote: QuoteTableItem) => void;
+  onViewAgentDetails?: (quote: QuoteTableItem) => void;
+  onQuoteClick?: (quote: QuoteTableItem) => void;
 }
 
 export function QuoteTable({
@@ -46,6 +56,11 @@ export function QuoteTable({
   onApprove,
   onReject,
   onComplete,
+  onRejectNegotiation,
+  onAddAgentDetails,
+  onViewSupplierDetails,
+  onViewAgentDetails,
+  onQuoteClick,
 }: QuoteTableProps) {
   if (quotes.length === 0) {
     return (
@@ -121,9 +136,31 @@ export function QuoteTable({
                   <span className="text-sm text-gray-600">Awaiting price</span>
                 )}
                 {(quote.status === "approved" ||
-                  quote.status === "rejected" ||
-                  quote.status === "completed") && (
+                  quote.status === "rejected") && (
                   <span className="text-sm text-gray-600">No actions</span>
+                )}
+                {quote.status === "completed" && (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm text-purple-600 font-medium">Completed</span>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onViewSupplierDetails?.(quote)}
+                        className="text-xs px-2 py-1 h-auto"
+                      >
+                        Supplier
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onViewAgentDetails?.(quote)}
+                        className="text-xs px-2 py-1 h-auto"
+                      >
+                        Agent
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </div>
             </TableCell>
@@ -209,11 +246,13 @@ export function QuoteTable({
                   status={quote.status}
                   size={compact ? "sm" : "md"}
                 />
-                {quote.negotiationRequested && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                    Negotiation
-                  </span>
-                )}
+                {quote.negotiationRequested &&
+                  quote.status !== "lost" &&
+                  quote.status !== "missed" && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                      Negotiation
+                    </span>
+                  )}
               </div>
             </TableCell>
             <TableCell className="font-medium text-gray-900">
@@ -234,6 +273,36 @@ export function QuoteTable({
             )}
             <TableCell>
               <div className="flex flex-col gap-2">
+                {/* View button for all quotes */}
+                {onQuoteClick && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onQuoteClick(quote)}
+                    className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                  >
+                    <svg
+                      className="h-4 w-4 mr-1"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                      />
+                    </svg>
+                    View
+                  </Button>
+                )}
                 {quote.status === "pending" && (
                   <div className="flex gap-2">
                     <Button
@@ -254,14 +323,24 @@ export function QuoteTable({
                 )}
                 {quote.status === "priced" && quote.negotiationRequested && (
                   <div className="flex flex-col gap-1">
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      onClick={() => onPrice?.(quote)}
-                      className="bg-amber-600 hover:bg-amber-700"
-                    >
-                      Revise Price
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => onPrice?.(quote)}
+                        className="bg-amber-600 hover:bg-amber-700"
+                      >
+                        Revise Price
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onRejectNegotiation?.(quote)}
+                        className="text-red-600 border-red-300 hover:bg-red-50"
+                      >
+                        Reject
+                      </Button>
+                    </div>
                     {quote.negotiationMessage && (
                       <p
                         className="text-xs text-gray-600 text-center truncate !my-[4px]"
@@ -273,25 +352,58 @@ export function QuoteTable({
                   </div>
                 )}
                 {quote.status === "priced" && !quote.negotiationRequested && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onReject?.(quote)}
-                  >
-                    Reject
-                  </Button>
+                  <span className="text-sm text-gray-500">
+                    Waiting for client response
+                  </span>
                 )}
-                {quote.status === "approved" && (
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    onClick={() => onComplete?.(quote)}
-                  >
-                    Complete
-                  </Button>
+                {quote.status === "approved" && !quote.supplierDetails && (
+                  <span className="text-sm text-amber-600">
+                    Waiting for supplier details
+                  </span>
+                )}
+                {quote.status === "approved" && quote.supplierDetails && (
+                  <div className="flex flex-col gap-1">
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => onAddAgentDetails?.(quote)}
+                    >
+                      Add Agent Details
+                    </Button>
+                    <span
+                      className="text-xs text-green-600 cursor-help"
+                      title={quote.supplierDetails}
+                    >
+                      Supplier details added
+                    </span>
+                  </div>
+                )}
+                {quote.status === "completed" && (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm text-purple-600 font-medium">Completed</span>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onViewSupplierDetails?.(quote)}
+                        className="text-xs px-2 py-1 h-auto"
+                      >
+                        Supplier
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onViewAgentDetails?.(quote)}
+                        className="text-xs px-2 py-1 h-auto"
+                      >
+                        Agent
+                      </Button>
+                    </div>
+                  </div>
                 )}
                 {(quote.status === "rejected" ||
-                  quote.status === "completed") && (
+                  quote.status === "lost" ||
+                  quote.status === "missed") && (
                   <span className="text-sm text-gray-600">No actions</span>
                 )}
               </div>

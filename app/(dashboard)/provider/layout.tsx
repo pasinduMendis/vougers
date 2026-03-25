@@ -5,7 +5,72 @@ import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, AuthUser } from "@/hooks/useAuth";
+import { useUnreadCount } from "@/hooks/useNotifications";
+import { useNotificationSubscription } from "@/hooks/useNotificationSubscription";
+import { SocketProvider } from "@/contexts/SocketContext";
+
+// Inner layout component that uses socket hooks (must be inside SocketProvider)
+function ProviderDashboardInner({
+  children,
+  user,
+  logout,
+  isAdmin,
+}: {
+  children: React.ReactNode;
+  user: AuthUser | null;
+  logout: () => Promise<void>;
+  isAdmin: boolean;
+}) {
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  // Get unread notification count
+  const { count: unreadCount, increment: incrementUnread } = useUnreadCount();
+
+  // Subscribe to real-time notifications for sidebar badge
+  useNotificationSubscription({
+    organizationId: user?.organizationId,
+    callbacks: {
+      onNewNotification: () => {
+        incrementUnread();
+      },
+    },
+  });
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 md:grid grid-cols-12">
+      {/* Sidebar - Desktop */}
+      <Sidebar
+        userType="provider"
+        isAdmin={isAdmin}
+        className="md:col-span-3"
+        notificationCount={unreadCount}
+      />
+
+      {/* Mobile Navigation */}
+      <MobileNav
+        isOpen={isMobileNavOpen}
+        onClose={() => setIsMobileNavOpen(false)}
+        userType="provider"
+        isAdmin={isAdmin}
+        notificationCount={unreadCount}
+      />
+
+      {/* Main Content Area */}
+      <div className=" md:col-span-9">
+        {/* Header */}
+        <Header
+          user={user}
+          onLogout={logout}
+          onMenuClick={() => setIsMobileNavOpen(true)}
+        />
+
+        {/* Page Content */}
+        <main className="!m-[24px] md:p-6 lg:p-8">{children}</main>
+      </div>
+    </div>
+  );
+}
 
 export default function ProviderDashboardLayout({
   children,
@@ -15,7 +80,6 @@ export default function ProviderDashboardLayout({
   const router = useRouter();
   const { user, isLoading, isAuthenticated, isProvider, isAdmin, logout } =
     useAuth();
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   // Redirect if not authenticated or not a provider
   useEffect(() => {
@@ -47,34 +111,10 @@ export default function ProviderDashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 md:grid grid-cols-12">
-      {/* Sidebar - Desktop */}
-      <Sidebar
-        userType="provider"
-        isAdmin={isAdmin}
-        className="md:col-span-3"
-      />
-
-      {/* Mobile Navigation */}
-      <MobileNav
-        isOpen={isMobileNavOpen}
-        onClose={() => setIsMobileNavOpen(false)}
-        userType="provider"
-        isAdmin={isAdmin}
-      />
-
-      {/* Main Content Area */}
-      <div className=" md:col-span-9">
-        {/* Header */}
-        <Header
-          user={user}
-          onLogout={logout}
-          onMenuClick={() => setIsMobileNavOpen(true)}
-        />
-
-        {/* Page Content */}
-        <main className="!m-[24px] md:p-6 lg:p-8">{children}</main>
-      </div>
-    </div>
+    <SocketProvider>
+      <ProviderDashboardInner user={user} logout={logout} isAdmin={isAdmin}>
+        {children}
+      </ProviderDashboardInner>
+    </SocketProvider>
   );
 }

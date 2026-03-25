@@ -37,6 +37,11 @@ export interface ClientQuote {
   negotiationMessage?: string;
   negotiationRequestedAt?: string;
   priceHistory?: PriceHistoryEntry[];
+  supplierDetails?: string;
+  supplierDetailsAddedAt?: string;
+  agentDetails?: string;
+  agentDetailsAddedAt?: string;
+  agentDetailsAddedBy?: string;
   createdAt: string;
   updatedAt: string;
   quoteRequest: {

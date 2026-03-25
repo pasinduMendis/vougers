@@ -1,7 +1,7 @@
 import { Types } from 'mongoose';
 
 // Quote status type
-export type QuoteStatus = 'pending' | 'priced' | 'approved' | 'rejected' | 'completed';
+export type QuoteStatus = 'pending' | 'priced' | 'approved' | 'rejected' | 'completed' | 'lost' | 'missed';
 
 // Create quote request payload (from client)
 export interface CreateQuoteRequestPayload {
@@ -28,6 +28,16 @@ export interface NegotiationRequestPayload {
 // Update quote status payload
 export interface UpdateQuoteStatusPayload {
   status: QuoteStatus;
+}
+
+// Supplier details payload (from client after approval)
+export interface SupplierDetailsPayload {
+  supplierDetails: string;
+}
+
+// Agent details payload (from provider after client submits supplier details)
+export interface AgentDetailsPayload {
+  agentDetails: string;
 }
 
 // Price history entry
@@ -83,6 +93,13 @@ export interface QuoteResponse {
   negotiationMessage?: string;
   negotiationRequestedAt?: Date;
   priceHistory?: PriceHistoryEntry[];
+  // Supplier details (added by client after approval)
+  supplierDetails?: string;
+  supplierDetailsAddedAt?: Date;
+  // Agent details (added by provider after client submits supplier details)
+  agentDetails?: string;
+  agentDetailsAddedAt?: Date;
+  agentDetailsAddedBy?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -99,6 +116,10 @@ export interface QuoteRequestResponse {
   extraFields?: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
+  // Status summary (populated in list view)
+  displayStatus?: QuoteStatus;
+  totalQuotes?: number;
+  pricedCount?: number;
 }
 
 // Quote request with quotes (detailed view)
@@ -146,6 +167,13 @@ export interface IQuote {
     pricedAt: Date;
     pricedBy: Types.ObjectId;
   }>;
+  // Supplier details (added by client after approval)
+  supplierDetails?: string;
+  supplierDetailsAddedAt?: Date;
+  // Agent details (added by provider after client submits supplier details)
+  agentDetails?: string;
+  agentDetailsAddedAt?: Date;
+  agentDetailsAddedBy?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }

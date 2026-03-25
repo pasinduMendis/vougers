@@ -24,6 +24,8 @@ const statusColors: Record<QuoteStatus | "all", string> = {
   approved: "bg-green-100 text-green-700",
   rejected: "bg-red-100 text-red-700",
   completed: "bg-purple-100 text-purple-700",
+  lost: "bg-orange-100 text-orange-700",
+  missed: "bg-slate-100 text-slate-700",
 };
 
 // Active status colors
@@ -34,6 +36,8 @@ const activeColors: Record<QuoteStatus | "all", string> = {
   approved: "bg-green-600 text-white",
   rejected: "bg-red-600 text-white",
   completed: "bg-purple-600 text-white",
+  lost: "bg-orange-600 text-white",
+  missed: "bg-slate-600 text-white",
 };
 
 export function StatusTabs({
@@ -77,7 +81,7 @@ export function StatusTabs({
   );
 }
 
-// Preset tabs for common use cases
+// Preset tabs for common use cases (client view - no lost/missed)
 export const DEFAULT_STATUS_TABS: StatusTab[] = [
   { value: "all", label: "All" },
   { value: "pending", label: "Pending" },
@@ -87,7 +91,19 @@ export const DEFAULT_STATUS_TABS: StatusTab[] = [
   { value: "completed", label: "Completed" },
 ];
 
-// Helper to generate tabs with counts
+// Preset tabs for provider view (includes lost/missed)
+export const PROVIDER_STATUS_TABS: StatusTab[] = [
+  { value: "all", label: "All" },
+  { value: "pending", label: "Pending" },
+  { value: "priced", label: "Priced" },
+  { value: "approved", label: "Approved" },
+  { value: "rejected", label: "Rejected" },
+  { value: "completed", label: "Completed" },
+  { value: "lost", label: "Lost" },
+  { value: "missed", label: "Missed" },
+];
+
+// Helper to generate tabs with counts (client view)
 export function generateStatusTabs(
   statusCounts: Partial<Record<QuoteStatus, number>>,
   totalCount: number,
@@ -103,5 +119,26 @@ export function generateStatusTabs(
       label: "Completed",
       count: statusCounts.completed || 0,
     },
+  ];
+}
+
+// Helper to generate tabs with counts (provider view - includes lost/missed)
+export function generateProviderStatusTabs(
+  statusCounts: Partial<Record<QuoteStatus, number>>,
+  totalCount: number,
+): StatusTab[] {
+  return [
+    { value: "all", label: "All", count: totalCount },
+    { value: "pending", label: "Pending", count: statusCounts.pending || 0 },
+    { value: "priced", label: "Priced", count: statusCounts.priced || 0 },
+    { value: "approved", label: "Approved", count: statusCounts.approved || 0 },
+    { value: "rejected", label: "Rejected", count: statusCounts.rejected || 0 },
+    {
+      value: "completed",
+      label: "Completed",
+      count: statusCounts.completed || 0,
+    },
+    { value: "lost", label: "Lost", count: statusCounts.lost || 0 },
+    { value: "missed", label: "Missed", count: statusCounts.missed || 0 },
   ];
 }

@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Pagination } from '@/components/ui/Pagination';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { StatusTabs, generateStatusTabs } from '@/components/dashboard/StatusTabs';
+import { StatusTabs, generateProviderStatusTabs } from '@/components/dashboard/StatusTabs';
 import { useClient, ClientQuote } from '@/hooks/useClients';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/useMediaQuery';
@@ -46,9 +46,19 @@ export default function ClientDetailPage({ params }: PageProps) {
   const [priceError, setPriceError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
 
-  // Generate status tabs
+  // Agent details modal state
+  const [agentDetailsModalOpen, setAgentDetailsModalOpen] = useState(false);
+  const [agentDetailsText, setAgentDetailsText] = useState('');
+  const [agentDetailsError, setAgentDetailsError] = useState<string | null>(null);
+
+  // View details modal state (for completed quotes)
+  const [viewSupplierModalOpen, setViewSupplierModalOpen] = useState(false);
+  const [viewAgentModalOpen, setViewAgentModalOpen] = useState(false);
+  const [selectedQuoteForView, setSelectedQuoteForView] = useState<ClientQuote | null>(null);
+
+  // Generate status tabs (provider view includes lost/missed)
   const statusTabs = useMemo(() => {
-    return generateStatusTabs(data?.statusCounts || {}, data?.totalCount || 0);
+    return generateProviderStatusTabs(data?.statusCounts || {}, data?.totalCount || 0);
   }, [data?.statusCounts, data?.totalCount]);
 
   // Handle status tab change
@@ -120,20 +130,49 @@ export default function ClientDetailPage({ params }: PageProps) {
     }
   };
 
-  // Handle complete
-  const handleComplete = async (quote: ClientQuote) => {
+  // Handle add agent details (opens modal)
+  const handleAddAgentDetails = (quote: ClientQuote) => {
+    setSelectedQuote(quote);
+    setAgentDetailsText('');
+    setAgentDetailsError(null);
+    setDetailModalOpen(false);
+    setAgentDetailsModalOpen(true);
+  };
+
+  // Submit agent details (completes the quote)
+  const handleSubmitAgentDetails = async () => {
+    if (!selectedQuote) return;
+
+    if (!agentDetailsText.trim()) {
+      setAgentDetailsError('Please enter agent details');
+      return;
+    }
+
+    if (agentDetailsText.length > 2000) {
+      setAgentDetailsError('Agent details cannot exceed 2000 characters');
+      return;
+    }
+
     try {
       setIsMutating(true);
-      await fetch(`/api/quotes/${quote._id}/status`, {
+      const response = await fetch(`/api/quotes/${selectedQuote._id}/agent-details`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ status: 'completed' }),
+        body: JSON.stringify({ agentDetails: agentDetailsText.trim() }),
       });
-      setDetailModalOpen(false);
+
+      if (!response.ok) {
+        throw new Error('Failed to add agent details');
+      }
+
+      setAgentDetailsModalOpen(false);
+      setSelectedQuote(null);
+      setAgentDetailsText('');
       refresh();
     } catch (err) {
-      console.error('Failed to complete quote:', err);
+      const message = err instanceof Error ? err.message : 'Failed to add agent details';
+      setAgentDetailsError(message);
     } finally {
       setIsMutating(false);
     }
@@ -175,6 +214,18 @@ export default function ClientDetailPage({ params }: PageProps) {
   const handleCloseDetailModal = () => {
     setDetailModalOpen(false);
     setSelectedQuote(null);
+  };
+
+  // Handle view supplier details (for completed quotes)
+  const handleViewSupplierDetails = (quote: ClientQuote) => {
+    setSelectedQuoteForView(quote);
+    setViewSupplierModalOpen(true);
+  };
+
+  // Handle view agent details (for completed quotes)
+  const handleViewAgentDetails = (quote: ClientQuote) => {
+    setSelectedQuoteForView(quote);
+    setViewAgentModalOpen(true);
   };
 
   // Format date
@@ -377,23 +428,25 @@ export default function ClientDetailPage({ params }: PageProps) {
                       <span className="text-sm text-gray-600">
                         {formatDate(quote.createdAt)}
                       </span>
-                      {/* Negotiation Label */}
-                      {quote.negotiationRequested && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
-                          <svg
-                            className="h-3 w-3"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          Negotiation
-                        </span>
-                      )}
+                      {/* Negotiation Label - hidden for lost/missed quotes */}
+                      {quote.negotiationRequested &&
+                        quote.status !== 'lost' &&
+                        quote.status !== 'missed' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                            <svg
+                              className="h-3 w-3"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                            Negotiation
+                          </span>
+                        )}
                     </div>
 
                     {/* Route */}
@@ -471,14 +524,46 @@ export default function ClientDetailPage({ params }: PageProps) {
                           Revise
                         </Button>
                       )}
-                      {quote.status === 'approved' && (
+                      {quote.status === 'approved' && !quote.supplierDetails && (
+                        <span className="text-sm text-amber-600">
+                          Waiting for supplier details
+                        </span>
+                      )}
+                      {quote.status === 'approved' && quote.supplierDetails && (
                         <Button
-                          variant="outline"
+                          variant="primary"
                           size="sm"
-                          onClick={() => handleComplete(quote)}
+                          onClick={() => handleAddAgentDetails(quote)}
                         >
-                          Complete
+                          Add Agent Details
                         </Button>
+                      )}
+                      {quote.status === 'completed' && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-purple-600 font-medium">
+                            Completed
+                          </span>
+                          {quote.supplierDetails && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewSupplierDetails(quote)}
+                              className="text-xs"
+                            >
+                              Supplier
+                            </Button>
+                          )}
+                          {quote.agentDetails && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewAgentDetails(quote)}
+                              className="text-xs"
+                            >
+                              Agent
+                            </Button>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
@@ -652,6 +737,44 @@ export default function ClientDetailPage({ params }: PageProps) {
               </div>
             )}
 
+            {/* Supplier Details (if provided by client) */}
+            {selectedQuote.supplierDetails && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-medium text-blue-800">
+                    Client Supplier Details
+                  </h4>
+                  {selectedQuote.supplierDetailsAddedAt && (
+                    <span className="text-xs text-blue-600">
+                      Added on {formatDate(selectedQuote.supplierDetailsAddedAt)}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-800 whitespace-pre-wrap">
+                  {selectedQuote.supplierDetails}
+                </p>
+              </div>
+            )}
+
+            {/* Agent Details (if provided by provider) */}
+            {selectedQuote.agentDetails && (
+              <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-medium text-purple-800">
+                    Your Agent Details
+                  </h4>
+                  {selectedQuote.agentDetailsAddedAt && (
+                    <span className="text-xs text-purple-600">
+                      Added on {formatDate(selectedQuote.agentDetailsAddedAt)}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-800 whitespace-pre-wrap">
+                  {selectedQuote.agentDetails}
+                </p>
+              </div>
+            )}
+
             {/* Price History */}
             {selectedQuote.priceHistory && selectedQuote.priceHistory.length > 0 && (
               <div className="border border-gray-200 rounded-xl p-4">
@@ -714,15 +837,15 @@ export default function ClientDetailPage({ params }: PageProps) {
                 </>
               )}
 
-              {/* Priced: Can Revise Price or Reject */}
-              {selectedQuote.status === 'priced' && (
+              {/* Priced with negotiation: Can Revise Price or Reject negotiation */}
+              {selectedQuote.status === 'priced' && selectedQuote.negotiationRequested && (
                 <>
                   <Button
                     variant="danger"
                     onClick={() => handleReject(selectedQuote)}
                     disabled={isMutating}
                   >
-                    Reject
+                    Reject Negotiation
                   </Button>
                   <Button
                     variant="primary"
@@ -733,16 +856,61 @@ export default function ClientDetailPage({ params }: PageProps) {
                 </>
               )}
 
-              {/* Approved: Can Complete */}
-              {selectedQuote.status === 'approved' && (
+              {/* Priced without negotiation: Waiting for client */}
+              {selectedQuote.status === 'priced' && !selectedQuote.negotiationRequested && (
+                <span className="text-sm text-gray-500 px-4">
+                  Waiting for client response
+                </span>
+              )}
+
+              {/* Approved without supplier details: Waiting */}
+              {selectedQuote.status === 'approved' && !selectedQuote.supplierDetails && (
+                <span className="text-sm text-amber-600 px-4">
+                  Waiting for client to submit supplier details
+                </span>
+              )}
+
+              {/* Approved with supplier details: Can add agent details */}
+              {selectedQuote.status === 'approved' && selectedQuote.supplierDetails && (
                 <Button
                   variant="primary"
-                  onClick={() => handleComplete(selectedQuote)}
-                  isLoading={isMutating}
-                  disabled={isMutating}
+                  onClick={() => handleAddAgentDetails(selectedQuote)}
                 >
-                  Mark Complete
+                  Add Agent Details
                 </Button>
+              )}
+
+              {/* Completed: Show status and view buttons */}
+              {selectedQuote.status === 'completed' && (
+                <>
+                  <span className="text-sm text-purple-600 font-medium px-4">
+                    Shipment completed
+                  </span>
+                  {selectedQuote.supplierDetails && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        handleCloseDetailModal();
+                        handleViewSupplierDetails(selectedQuote);
+                      }}
+                    >
+                      View Supplier Details
+                    </Button>
+                  )}
+                  {selectedQuote.agentDetails && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        handleCloseDetailModal();
+                        handleViewAgentDetails(selectedQuote);
+                      }}
+                    >
+                      View Agent Details
+                    </Button>
+                  )}
+                </>
               )}
             </>
           )}
@@ -845,6 +1013,217 @@ export default function ClientDetailPage({ params }: PageProps) {
             disabled={isMutating}
           >
             Submit Price
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Agent Details Modal */}
+      <Modal
+        isOpen={agentDetailsModalOpen}
+        onClose={() => setAgentDetailsModalOpen(false)}
+        title="Add Agent Details"
+        description={
+          selectedQuote
+            ? `${selectedQuote.quoteRequest?.portOfLoading} → ${selectedQuote.quoteRequest?.portOfDischarge}`
+            : ''
+        }
+        size="md"
+      >
+        <div className="space-y-4">
+          {agentDetailsError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+              {agentDetailsError}
+            </div>
+          )}
+
+          {/* Show supplier details that client submitted */}
+          {selectedQuote?.supplierDetails && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <p className="text-sm font-medium text-green-700 mb-2">
+                Client Supplier Details:
+              </p>
+              <p className="text-sm text-gray-800 whitespace-pre-wrap">
+                {selectedQuote.supplierDetails}
+              </p>
+            </div>
+          )}
+
+          {/* Agent Details Text Area */}
+          <div>
+            <label
+              htmlFor="agentDetails"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Agent Details
+            </label>
+            <textarea
+              id="agentDetails"
+              rows={5}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+              placeholder="Enter agent/shipping details for the client..."
+              value={agentDetailsText}
+              onChange={(e) => setAgentDetailsText(e.target.value)}
+              disabled={isMutating}
+              maxLength={2000}
+            />
+            <p className="mt-1 text-xs text-gray-500 text-right">
+              {agentDetailsText.length}/2000 characters
+            </p>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-sm text-blue-700">
+              <strong>Note:</strong> Submitting agent details will automatically mark this quote as completed.
+            </p>
+          </div>
+        </div>
+
+        <ModalFooter>
+          <Button
+            variant="outline"
+            onClick={() => setAgentDetailsModalOpen(false)}
+            disabled={isMutating}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmitAgentDetails}
+            isLoading={isMutating}
+            disabled={isMutating || !agentDetailsText.trim()}
+          >
+            Submit & Complete
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* View Supplier Details Modal (Read-only for completed quotes) */}
+      <Modal
+        isOpen={viewSupplierModalOpen}
+        onClose={() => {
+          setViewSupplierModalOpen(false);
+          setSelectedQuoteForView(null);
+        }}
+        title="Supplier Details"
+        description={
+          selectedQuoteForView
+            ? `${selectedQuoteForView.quoteRequest?.portOfLoading} → ${selectedQuoteForView.quoteRequest?.portOfDischarge}`
+            : ""
+        }
+        size="md"
+      >
+        <div className="space-y-4">
+          {selectedQuoteForView && (
+            <>
+              {selectedQuoteForView.supplierDetails ? (
+                <>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap">
+                      {selectedQuoteForView.supplierDetails}
+                    </p>
+                  </div>
+                  {selectedQuoteForView.supplierDetailsAddedAt && (
+                    <p className="text-xs text-gray-500">
+                      Added on {formatDate(selectedQuoteForView.supplierDetailsAddedAt)}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <svg
+                    className="mx-auto h-12 w-12 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <p className="mt-2 text-sm text-gray-500">No supplier details available</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <ModalFooter>
+          <Button
+            variant="primary"
+            onClick={() => {
+              setViewSupplierModalOpen(false);
+              setSelectedQuoteForView(null);
+            }}
+          >
+            Close
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* View Agent Details Modal (Read-only for completed quotes) */}
+      <Modal
+        isOpen={viewAgentModalOpen}
+        onClose={() => {
+          setViewAgentModalOpen(false);
+          setSelectedQuoteForView(null);
+        }}
+        title="Agent Details"
+        description={
+          selectedQuoteForView
+            ? `${selectedQuoteForView.quoteRequest?.portOfLoading} → ${selectedQuoteForView.quoteRequest?.portOfDischarge}`
+            : ""
+        }
+        size="md"
+      >
+        <div className="space-y-4">
+          {selectedQuoteForView && (
+            <>
+              {selectedQuoteForView.agentDetails ? (
+                <>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap">
+                      {selectedQuoteForView.agentDetails}
+                    </p>
+                  </div>
+                  {selectedQuoteForView.agentDetailsAddedAt && (
+                    <p className="text-xs text-gray-500">
+                      Added on {formatDate(selectedQuoteForView.agentDetailsAddedAt)}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <svg
+                    className="mx-auto h-12 w-12 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <p className="mt-2 text-sm text-gray-500">No agent details available</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <ModalFooter>
+          <Button
+            variant="primary"
+            onClick={() => {
+              setViewAgentModalOpen(false);
+              setSelectedQuoteForView(null);
+            }}
+          >
+            Close
           </Button>
         </ModalFooter>
       </Modal>

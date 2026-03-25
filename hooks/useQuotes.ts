@@ -436,6 +436,99 @@ export function useQuoteMutations() {
     }
   }, []);
 
+  // Reject negotiation (provider)
+  const rejectNegotiation = useCallback(async (
+    quoteId: string
+  ): Promise<QuoteResponse | null> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const response = await fetch(`/api/quotes/${quoteId}/reject-negotiation`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      const data: ApiResponse<QuoteResponse> = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to reject negotiation');
+      }
+
+      return data.data || null;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to reject negotiation';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Add supplier details (client)
+  const addSupplierDetails = useCallback(async (
+    quoteId: string,
+    supplierDetails: string
+  ): Promise<{ supplierDetails: string; supplierDetailsAddedAt: Date } | null> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const response = await fetch(`/api/quotes/${quoteId}/supplier-details`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ supplierDetails }),
+      });
+
+      const data: ApiResponse<{ supplierDetails: string; supplierDetailsAddedAt: Date }> = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to add supplier details');
+      }
+
+      return data.data || null;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to add supplier details';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Add agent details (provider) - completes the quote
+  const addAgentDetails = useCallback(async (
+    quoteId: string,
+    agentDetails: string
+  ): Promise<{ agentDetails: string; agentDetailsAddedAt: Date; status: string } | null> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const response = await fetch(`/api/quotes/${quoteId}/agent-details`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ agentDetails }),
+      });
+
+      const data: ApiResponse<{ agentDetails: string; agentDetailsAddedAt: Date; status: string }> = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to add agent details');
+      }
+
+      return data.data || null;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to add agent details';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   return {
     isLoading,
     error,
@@ -444,5 +537,8 @@ export function useQuoteMutations() {
     updateQuoteStatus,
     cancelQuoteRequest,
     requestNegotiation,
+    rejectNegotiation,
+    addSupplierDetails,
+    addAgentDetails,
   };
 }

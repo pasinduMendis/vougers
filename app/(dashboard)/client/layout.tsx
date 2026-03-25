@@ -5,7 +5,68 @@ import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, AuthUser } from "@/hooks/useAuth";
+import { useUnreadCount } from "@/hooks/useNotifications";
+import { useNotificationSubscription } from "@/hooks/useNotificationSubscription";
+import { SocketProvider } from "@/contexts/SocketContext";
+
+// Inner layout component that uses socket hooks (must be inside SocketProvider)
+function ClientDashboardInner({
+  children,
+  user,
+  logout,
+}: {
+  children: React.ReactNode;
+  user: AuthUser | null;
+  logout: () => Promise<void>;
+}) {
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  // Get unread notification count
+  const { count: unreadCount, increment: incrementUnread } = useUnreadCount();
+
+  // Subscribe to real-time notifications for sidebar badge
+  useNotificationSubscription({
+    clientId: user?.id,
+    callbacks: {
+      onNewNotification: () => {
+        incrementUnread();
+      },
+    },
+  });
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 md:grid grid-cols-12">
+      <div className="md:col-span-3">
+        {/* Sidebar - Desktop */}
+        <Sidebar userType="client" notificationCount={unreadCount} />
+      </div>
+
+      {/* Mobile Navigation */}
+      <MobileNav
+        isOpen={isMobileNavOpen}
+        onClose={() => setIsMobileNavOpen(false)}
+        userType="client"
+        notificationCount={unreadCount}
+      />
+
+      <div className="mx-[24px] md:col-span-9">
+        {/* Main Content Area */}
+        <div>
+          {/* Header */}
+          <Header
+            user={user}
+            onLogout={logout}
+            onMenuClick={() => setIsMobileNavOpen(true)}
+          />
+
+          {/* Page Content */}
+          <main className=" !p-[24px] md:p-6 lg:p-8">{children}</main>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ClientDashboardLayout({
   children,
@@ -14,7 +75,6 @@ export default function ClientDashboardLayout({
 }) {
   const router = useRouter();
   const { user, isLoading, isAuthenticated, isClient, logout } = useAuth();
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   // Redirect if not authenticated or not a client
   useEffect(() => {
@@ -46,33 +106,10 @@ export default function ClientDashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 md:grid grid-cols-12">
-      <div className="md:col-span-3">
-        {/* Sidebar - Desktop */}
-        <Sidebar userType="client" />
-      </div>
-
-      {/* Mobile Navigation */}
-      <MobileNav
-        isOpen={isMobileNavOpen}
-        onClose={() => setIsMobileNavOpen(false)}
-        userType="client"
-      />
-
-      <div className="mx-[24px] md:col-span-9">
-        {/* Main Content Area */}
-        <div>
-          {/* Header */}
-          <Header
-            user={user}
-            onLogout={logout}
-            onMenuClick={() => setIsMobileNavOpen(true)}
-          />
-
-          {/* Page Content */}
-          <main className=" !p-[24px] md:p-6 lg:p-8">{children}</main>
-        </div>
-      </div>
-    </div>
+    <SocketProvider>
+      <ClientDashboardInner user={user} logout={logout}>
+        {children}
+      </ClientDashboardInner>
+    </SocketProvider>
   );
 }

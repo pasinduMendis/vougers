@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { NotificationBell } from '@/components/notifications';
 import { cn } from '@/src/lib/utils';
 import type { AuthUser } from '@/hooks/useAuth';
 
@@ -42,10 +43,21 @@ export function Header({ user, onLogout, onMenuClick, className }: HeaderProps) 
       </div>
 
       {/* Spacer for desktop */}
-      <div className="hidden md:block" />
+      <div className="hidden md:block flex-1" />
 
-      {/* User Menu */}
-      <div className="relative">
+      {/* Right side: Notifications + User Menu */}
+      <div className="flex items-center gap-2">
+        {/* Notification Bell */}
+        {user && (
+          <NotificationBell
+            clientId={user.type === 'client' ? user.id : undefined}
+            organizationId={user.type === 'provider' ? user.organizationId : undefined}
+            userType={user.type}
+          />
+        )}
+
+        {/* User Menu */}
+        <div className="relative">
         <button
           type="button"
           className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors"
@@ -126,6 +138,7 @@ export function Header({ user, onLogout, onMenuClick, className }: HeaderProps) 
             </div>
           </>
         )}
+        </div>
       </div>
     </header>
   );

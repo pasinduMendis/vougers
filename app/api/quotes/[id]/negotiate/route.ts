@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/src/lib/db/connection';
 import QuoteModel from '@/src/lib/models/quote.model';
+import QuoteRequestModel from '@/src/lib/models/quote-request.model';
+import ClientModel from '@/src/lib/models/client.model';
 import { guardClient, getClientId } from '@/src/lib/auth/guards';
 import { clientOwnsQuote } from '@/src/lib/services/quote.service';
+import { emitNegotiationRequested } from '@/src/lib/services/socket.service';
+import { notifyNegotiationRequested } from '@/src/lib/services/notification.service';
 import { Types } from 'mongoose';
 import { errorResponse, successResponse } from '@/src/lib/types/api.types';
 
@@ -88,6 +92,38 @@ export async function POST(
 
     const savedQuote = await quote.save();
     console.log('Saved quote:', savedQuote._id, 'negotiationRequested:', savedQuote.negotiationRequested);
+
+    // Get client name for the event payload
+    const client = await ClientModel.findById(clientId).select('name companyName').lean();
+    const clientName = client?.name || client?.companyName || 'Unknown Client';
+
+    // Emit socket event to notify provider
+    emitNegotiationRequested({
+      quoteId: id,
+      quoteRequestId: quote.quoteRequestId.toString(),
+      clientId: clientId.toString(),
+      clientName,
+      serviceProviderId: quote.serviceProviderId.toString(),
+      message: message || undefined,
+      requestedAt: quote.negotiationRequestedAt || new Date(),
+    });
+
+    // Get quote request for route info and create notification
+    const quoteRequest = await QuoteRequestModel.findById(quote.quoteRequestId)
+      .select('portOfLoading portOfDischarge')
+      .lean();
+    const route = quoteRequest
+      ? `${quoteRequest.portOfLoading} → ${quoteRequest.portOfDischarge}`
+      : 'Unknown Route';
+
+    // Create notification for provider
+    notifyNegotiationRequested({
+      providerId: quote.serviceProviderId.toString(),
+      quoteId: id,
+      quoteRequestId: quote.quoteRequestId.toString(),
+      clientName,
+      route,
+    }).catch((err) => console.error('Failed to create negotiation notification:', err));
 
     // Return updated quote with populated provider
     const updatedQuote = await QuoteModel.findById(id)

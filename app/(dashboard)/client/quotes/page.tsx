@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Pagination } from "@/components/ui/Pagination";
 import { FilterPanel } from "@/components/dashboard/FilterPanel";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   StatusTabs,
   generateStatusTabs,
@@ -77,6 +78,7 @@ export default function ClientQuotesPage() {
             {urlStatus === "pending" && "Awaiting Quotes"}
             {urlStatus === "priced" && "Priced Quotes"}
             {urlStatus === "approved" && "Approved Quotes"}
+            {urlStatus === "completed" && "Completed Quotes"}
             {!urlStatus && "My Quote Requests"}
           </h1>
           <p className="mt-1 text-sm text-gray-600">
@@ -85,6 +87,7 @@ export default function ClientQuotesPage() {
             {urlStatus === "priced" &&
               "Quote requests with pricing ready for your decision"}
             {urlStatus === "approved" && "Quote requests you have approved"}
+            {urlStatus === "completed" && "Completed shipments"}
             {!urlStatus && "Manage your shipping quote requests"}
           </p>
         </div>
@@ -184,6 +187,16 @@ export default function ClientQuotesPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   {/* Route & Details */}
                   <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      {request.displayStatus && (
+                        <StatusBadge status={request.displayStatus} />
+                      )}
+                      {request.totalQuotes !== undefined && request.totalQuotes > 0 && (
+                        <span className="text-xs text-gray-500">
+                          {request.pricedCount || 0}/{request.totalQuotes} priced
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 text-lg font-semibold text-gray-900">
                       <span>{request.portOfLoading}</span>
                       <svg

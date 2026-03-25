@@ -8,12 +8,14 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ReactNode;
+  showBadge?: boolean;
 }
 
 interface SidebarProps {
   userType: "client" | "provider";
   isAdmin?: boolean;
   className?: string;
+  notificationCount?: number;
 }
 
 // Icon components
@@ -113,6 +115,22 @@ const ApprovedIcon = () => (
   </svg>
 );
 
+const CompletedIcon = () => (
+  <svg
+    className="h-5 w-5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M5 13l4 4L19 7"
+    />
+  </svg>
+);
+
 const ClientsIcon = () => (
   <svg
     className="h-5 w-5"
@@ -125,6 +143,22 @@ const ClientsIcon = () => (
       strokeLinejoin="round"
       strokeWidth={2}
       d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+    />
+  </svg>
+);
+
+const NotificationsIcon = () => (
+  <svg
+    className="h-5 w-5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
     />
   </svg>
 );
@@ -148,6 +182,17 @@ const clientNavItems: NavItem[] = [
     label: "Approved Quotes",
     icon: <ApprovedIcon />,
   },
+  {
+    href: "/client/quotes?status=completed",
+    label: "Completed",
+    icon: <CompletedIcon />,
+  },
+  {
+    href: "/client/notifications",
+    label: "Notifications",
+    icon: <NotificationsIcon />,
+    showBadge: true,
+  },
 ];
 
 // Provider navigation items
@@ -155,6 +200,7 @@ const getProviderNavItems = (isAdmin: boolean): NavItem[] => {
   const items: NavItem[] = [
     { href: "/provider/quotes", label: "Quotes", icon: <QuoteIcon /> },
     { href: "/provider/clients", label: "Clients", icon: <ClientsIcon /> },
+    { href: "/provider/notifications", label: "Notifications", icon: <NotificationsIcon />, showBadge: true },
   ];
 
   if (isAdmin) {
@@ -172,6 +218,7 @@ export function Sidebar({
   userType,
   isAdmin = false,
   className,
+  notificationCount = 0,
 }: SidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -224,6 +271,7 @@ export function Sidebar({
       <nav className="flex-1 py-5 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = isNavItemActive(item);
+          const showBadgeCount = item.showBadge && notificationCount > 0;
 
           return (
             <Link
@@ -239,7 +287,19 @@ export function Sidebar({
               <span className={cn(isActive ? "text-white" : "text-slate-500")}>
                 {item.icon}
               </span>
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {showBadgeCount && (
+                <span
+                  className={cn(
+                    "flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold rounded-full",
+                    isActive
+                      ? "bg-white text-indigo-600"
+                      : "bg-red-500 text-white"
+                  )}
+                >
+                  {notificationCount > 99 ? "99+" : notificationCount}
+                </span>
+              )}
             </Link>
           );
         })}

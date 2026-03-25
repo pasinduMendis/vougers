@@ -13,6 +13,10 @@ interface QuoteCardProps {
   onApprove?: (quote: QuoteTableItem) => void;
   onReject?: (quote: QuoteTableItem) => void;
   onComplete?: (quote: QuoteTableItem) => void;
+  onRejectNegotiation?: (quote: QuoteTableItem) => void;
+  onAddAgentDetails?: (quote: QuoteTableItem) => void;
+  onViewSupplierDetails?: (quote: QuoteTableItem) => void;
+  onViewAgentDetails?: (quote: QuoteTableItem) => void;
   onClick?: (quote: QuoteTableItem) => void;
 }
 
@@ -23,6 +27,10 @@ export function QuoteCard({
   onApprove,
   onReject,
   onComplete,
+  onRejectNegotiation,
+  onAddAgentDetails,
+  onViewSupplierDetails,
+  onViewAgentDetails,
   onClick,
 }: QuoteCardProps) {
   // Client view card
@@ -101,6 +109,37 @@ export function QuoteCard({
           </Button>
         </CardFooter>
       )}
+
+      {quote.status === "completed" && (
+        <CardFooter
+          className="px-4 py-3 bg-purple-50"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="w-full space-y-2">
+            <p className="text-sm text-purple-700 text-center font-medium">
+              Shipment completed
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                fullWidth
+                onClick={() => onViewSupplierDetails?.(quote)}
+              >
+                View Supplier Details
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                fullWidth
+                onClick={() => onViewAgentDetails?.(quote)}
+              >
+                View Agent Details
+              </Button>
+            </div>
+          </div>
+        </CardFooter>
+      )}
     </Card>
   );
 
@@ -123,11 +162,13 @@ export function QuoteCard({
           </div>
           <div className="flex flex-col items-end gap-1">
             <StatusBadge status={quote.status} size="sm" />
-            {quote.negotiationRequested && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                Negotiation
-              </span>
-            )}
+            {quote.negotiationRequested &&
+              quote.status !== "lost" &&
+              quote.status !== "missed" && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                  Negotiation
+                </span>
+              )}
           </div>
         </div>
 
@@ -226,15 +267,26 @@ export function QuoteCard({
           className="px-4 py-3 bg-amber-50 flex flex-col !my-[8px]"
           onClick={(e) => e.stopPropagation()}
         >
-          <Button
-            size="sm"
-            variant="primary"
-            fullWidth
-            onClick={() => onPrice?.(quote)}
-            className="bg-amber-600 hover:bg-amber-700"
-          >
-            Revise Price
-          </Button>
+          <div className="flex gap-2 w-full">
+            <Button
+              size="sm"
+              variant="primary"
+              fullWidth
+              onClick={() => onPrice?.(quote)}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              Revise Price
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              fullWidth
+              onClick={() => onRejectNegotiation?.(quote)}
+              className="text-red-600 border-red-300 hover:bg-red-50"
+            >
+              Reject
+            </Button>
+          </div>
           {quote.negotiationMessage && (
             <p
               className="text-xs text-gray-600 text-center truncate !my-[4px]"
@@ -251,30 +303,73 @@ export function QuoteCard({
           className="px-4 py-3 bg-gray-50"
           onClick={(e) => e.stopPropagation()}
         >
-          <Button
-            size="sm"
-            variant="outline"
-            fullWidth
-            onClick={() => onReject?.(quote)}
-          >
-            Reject
-          </Button>
+          <span className="text-sm text-gray-500 w-full text-center">
+            Waiting for client response
+          </span>
         </CardFooter>
       )}
 
-      {quote.status === "approved" && (
+      {quote.status === "approved" && !quote.supplierDetails && (
+        <CardFooter
+          className="px-4 py-3 bg-amber-50"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <span className="text-sm text-amber-700 w-full text-center">
+            Waiting for client to submit supplier details
+          </span>
+        </CardFooter>
+      )}
+
+      {quote.status === "approved" && quote.supplierDetails && (
         <CardFooter
           className="px-4 py-3 bg-gray-50"
           onClick={(e) => e.stopPropagation()}
         >
-          <Button
-            size="sm"
-            variant="primary"
-            fullWidth
-            onClick={() => onComplete?.(quote)}
-          >
-            Mark Complete
-          </Button>
+          <div className="w-full">
+            <Button
+              size="sm"
+              variant="primary"
+              fullWidth
+              onClick={() => onAddAgentDetails?.(quote)}
+            >
+              Add Agent Details
+            </Button>
+            <div className="mt-2 p-2 bg-green-50 rounded border border-green-200">
+              <p className="text-xs text-green-700 font-medium mb-1">Supplier Details:</p>
+              <p className="text-sm text-gray-800 whitespace-pre-wrap line-clamp-3">{quote.supplierDetails}</p>
+            </div>
+          </div>
+        </CardFooter>
+      )}
+
+      {quote.status === "completed" && (
+        <CardFooter
+          className="px-4 py-3 bg-purple-50"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="w-full space-y-2">
+            <p className="text-sm text-purple-700 text-center font-medium">
+              Shipment completed
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                fullWidth
+                onClick={() => onViewSupplierDetails?.(quote)}
+              >
+                View Supplier Details
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                fullWidth
+                onClick={() => onViewAgentDetails?.(quote)}
+              >
+                View Agent Details
+              </Button>
+            </div>
+          </div>
         </CardFooter>
       )}
     </Card>

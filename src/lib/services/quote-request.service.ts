@@ -3,6 +3,7 @@ import { connectDB } from '../db/connection';
 import QuoteRequestModel, { IQuoteRequest } from '../models/quote-request.model';
 import QuoteModel from '../models/quote.model';
 import OrganizationModel from '../models/organization.model';
+import ClientModel from '../models/client.model';
 import {
   CreateQuoteRequestPayload,
   QuoteRequestResponse,
@@ -12,6 +13,8 @@ import {
   QuoteRequestFilters,
 } from '../types/quote.types';
 import { paginatedResponse, DEFAULT_PAGE, DEFAULT_LIMIT } from '../types/api.types';
+import { emitNewQuote } from './socket.service';
+import { notifyNewQuoteRequest } from './notification.service';
 
 /**
  * Create a new quote request and send to providers
@@ -101,6 +104,38 @@ export async function createQuoteRequest(
     updatedAt: q.updatedAt,
   }));
 
+  // Get client name for the event payload
+  const client = await ClientModel.findById(clientId).select('name companyName').lean();
+  const clientName = client?.name || client?.companyName || 'Unknown Client';
+
+  // Emit socket event to notify providers about new quote
+  emitNewQuote(
+    targetProviderIds.map((id) => id.toString()),
+    {
+      quoteId: createdQuotes[0]._id.toString(), // First quote ID as reference
+      quoteRequestId: quoteRequest._id.toString(),
+      clientId: clientId,
+      clientName,
+      portOfLoading: payload.portOfLoading,
+      portOfDischarge: payload.portOfDischarge,
+      commodity: payload.commodity,
+      volume: payload.volume,
+      createdAt: quoteRequest.createdAt,
+    }
+  );
+
+  // Create notifications for each provider
+  const route = `${payload.portOfLoading} → ${payload.portOfDischarge}`;
+  for (let i = 0; i < targetProviderIds.length; i++) {
+    notifyNewQuoteRequest({
+      providerId: targetProviderIds[i].toString(),
+      quoteId: createdQuotes[i]._id.toString(),
+      quoteRequestId: quoteRequest._id.toString(),
+      clientName,
+      route,
+    }).catch((err) => console.error('Failed to create new quote notification:', err));
+  }
+
   return {
     success: true,
     data: {
@@ -168,18 +203,73 @@ export async function getQuoteRequestsByClient(
     QuoteRequestModel.countDocuments(query),
   ]);
 
-  const data: QuoteRequestResponse[] = quoteRequests.map((qr) => ({
-    _id: qr._id.toString(),
-    clientId: qr.clientId.toString(),
-    portOfLoading: qr.portOfLoading,
-    portOfDischarge: qr.portOfDischarge,
-    commodity: qr.commodity,
-    volume: qr.volume,
-    pickupAddress: qr.pickupAddress,
-    extraFields: qr.extraFields,
-    createdAt: qr.createdAt,
-    updatedAt: qr.updatedAt,
-  }));
+  // Get quote status summaries for each quote request
+  const quoteRequestIds = quoteRequests.map((qr) => qr._id);
+  const quotesStatusAgg = await QuoteModel.aggregate([
+    { $match: { quoteRequestId: { $in: quoteRequestIds } } },
+    {
+      $group: {
+        _id: '$quoteRequestId',
+        statuses: { $push: '$status' },
+        totalQuotes: { $sum: 1 },
+        pricedCount: {
+          $sum: { $cond: [{ $in: ['$status', ['priced', 'approved', 'completed']] }, 1, 0] },
+        },
+        approvedCount: {
+          $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] },
+        },
+        completedCount: {
+          $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] },
+        },
+      },
+    },
+  ]);
+
+  // Create a map for quick lookup
+  const statusMap = new Map<string, {
+    statuses: string[];
+    totalQuotes: number;
+    pricedCount: number;
+    approvedCount: number;
+    completedCount: number;
+  }>();
+  quotesStatusAgg.forEach((item) => {
+    statusMap.set(item._id.toString(), {
+      statuses: item.statuses,
+      totalQuotes: item.totalQuotes,
+      pricedCount: item.pricedCount,
+      approvedCount: item.approvedCount,
+      completedCount: item.completedCount,
+    });
+  });
+
+  // Helper function to determine the display status for a quote request
+  const getDisplayStatus = (statusInfo: typeof statusMap extends Map<string, infer V> ? V : never): string => {
+    if (statusInfo.completedCount > 0) return 'completed';
+    if (statusInfo.approvedCount > 0) return 'approved';
+    if (statusInfo.pricedCount > 0) return 'priced';
+    return 'pending';
+  };
+
+  const data = quoteRequests.map((qr) => {
+    const statusInfo = statusMap.get(qr._id.toString());
+    return {
+      _id: qr._id.toString(),
+      clientId: qr.clientId.toString(),
+      portOfLoading: qr.portOfLoading,
+      portOfDischarge: qr.portOfDischarge,
+      commodity: qr.commodity,
+      volume: qr.volume,
+      pickupAddress: qr.pickupAddress,
+      extraFields: qr.extraFields,
+      createdAt: qr.createdAt,
+      updatedAt: qr.updatedAt,
+      // Status summary
+      displayStatus: statusInfo ? getDisplayStatus(statusInfo) : 'pending',
+      totalQuotes: statusInfo?.totalQuotes || 0,
+      pricedCount: statusInfo?.pricedCount || 0,
+    };
+  });
 
   return paginatedResponse(data, page, limit, total);
 }
@@ -259,6 +349,11 @@ export async function getQuoteRequestById(
         pricedAt: h.pricedAt,
         pricedBy: h.pricedBy.toString(),
       })),
+      supplierDetails: q.supplierDetails,
+      supplierDetailsAddedAt: q.supplierDetailsAddedAt,
+      agentDetails: q.agentDetails,
+      agentDetailsAddedAt: q.agentDetailsAddedAt,
+      agentDetailsAddedBy: q.agentDetailsAddedBy?.toString(),
       createdAt: q.createdAt,
       updatedAt: q.updatedAt,
     };
