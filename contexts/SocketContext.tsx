@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   createContext,
@@ -7,9 +7,9 @@ import {
   useState,
   useCallback,
   ReactNode,
-} from 'react';
-import { io, Socket } from 'socket.io-client';
-import { SOCKET_EVENTS } from '@/src/lib/types/socket.types';
+} from "react";
+import { io, Socket } from "socket.io-client";
+import { SOCKET_EVENTS } from "@/src/lib/types/socket.types";
 
 interface SocketContextValue {
   socket: Socket | null;
@@ -35,25 +35,26 @@ export function SocketProvider({ children }: SocketProviderProps) {
   useEffect(() => {
     // Initialize socket connection
     const socketInstance = io({
-      path: '/api/socketio',
-      transports: ['websocket', 'polling'],
+      path: "/api/socketio/",
+      transports: ["polling", "websocket"], // Start with polling, then upgrade to websocket
+      upgrade: true,
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
     });
 
-    socketInstance.on('connect', () => {
-      console.log('[Socket] Connected:', socketInstance.id);
+    socketInstance.on("connect", () => {
+      console.log("[Socket] Connected:", socketInstance.id);
       setIsConnected(true);
     });
 
-    socketInstance.on('disconnect', (reason) => {
-      console.log('[Socket] Disconnected:', reason);
+    socketInstance.on("disconnect", (reason) => {
+      console.log("[Socket] Disconnected:", reason);
       setIsConnected(false);
     });
 
-    socketInstance.on('connect_error', (error) => {
-      console.error('[Socket] Connection error:', error.message);
+    socketInstance.on("connect_error", (error) => {
+      console.error("[Socket] Connection error:", error.message);
     });
 
     setSocket(socketInstance);
@@ -70,7 +71,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
         socket.emit(SOCKET_EVENTS.JOIN_CLIENT, clientId);
       }
     },
-    [socket, isConnected]
+    [socket, isConnected],
   );
 
   const joinProviderRoom = useCallback(
@@ -79,7 +80,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
         socket.emit(SOCKET_EVENTS.JOIN_PROVIDER, organizationId);
       }
     },
-    [socket, isConnected]
+    [socket, isConnected],
   );
 
   const joinQuoteRequestRoom = useCallback(
@@ -88,7 +89,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
         socket.emit(SOCKET_EVENTS.JOIN_QUOTE_REQUEST, quoteRequestId);
       }
     },
-    [socket, isConnected]
+    [socket, isConnected],
   );
 
   const leaveClientRoom = useCallback(
@@ -97,7 +98,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
         socket.emit(SOCKET_EVENTS.LEAVE_CLIENT, clientId);
       }
     },
-    [socket]
+    [socket],
   );
 
   const leaveProviderRoom = useCallback(
@@ -106,7 +107,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
         socket.emit(SOCKET_EVENTS.LEAVE_PROVIDER, organizationId);
       }
     },
-    [socket]
+    [socket],
   );
 
   const leaveQuoteRequestRoom = useCallback(
@@ -115,7 +116,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
         socket.emit(SOCKET_EVENTS.LEAVE_QUOTE_REQUEST, quoteRequestId);
       }
     },
-    [socket]
+    [socket],
   );
 
   const value: SocketContextValue = {
@@ -137,7 +138,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
 export function useSocket() {
   const context = useContext(SocketContext);
   if (!context) {
-    throw new Error('useSocket must be used within a SocketProvider');
+    throw new Error("useSocket must be used within a SocketProvider");
   }
   return context;
 }
